@@ -1,0 +1,170 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "description": "This is the API documentation for DocuOracle.",
+    "version": "1.0.0",
+    "title": "DocuOracle API"
+  },
+  "paths": {
+    "/api/documents/{document_id}": {
+      "get": {
+        "summary": "Get document by ID",
+        "description": "Returns document details for the given document ID",
+        "parameters": [
+          {
+            "name": "document_id",
+            "in": "path",
+            "required": true,
+            "type": "integer"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Document details",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "filename": {
+                  "type": "string"
+                },
+                "uploaded_at": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Document not found"
+          }
+        }
+      }
+    },
+    "/api/documents": {
+      "post": {
+        "summary": "Upload a document",
+        "description": "Allows a user to upload a document to the system.",
+        "parameters": [
+          {
+            "name": "file",
+            "in": "formData",
+            "required": true,
+            "type": "file",
+            "description": "The document file to upload."
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "File uploaded successfully",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "message": {
+                  "type": "string"
+                },
+                "document_id": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "No file uploaded"
+          }
+        }
+      }
+    },
+    "/api/query": {
+      "post": {
+        "summary": "Ask a question about a document",
+        "description": "Queries the system to ask a question about a specific document.",
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "properties": {
+                "document_id": {
+                  "type": "integer"
+                },
+                "question": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The AI-generated answer",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "answer": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Document not found"
+          }
+        }
+      }
+    },
+    "/api/graph": {
+      "post": {
+        "summary": "Generate a data analysis graph",
+        "description": "Generates a data analysis graph based on an Excel document.",
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "properties": {
+                "document_id": {
+                  "type": "integer"
+                },
+                "chart_type": {
+                  "type": "string",
+                  "description": "Type of chart to generate (line, bar, scatter)"
+                },
+                "x_col": {
+                  "type": "string",
+                  "description": "Column name for X-axis"
+                },
+                "y_col": {
+                  "type": "string",
+                  "description": "Column name for Y-axis"
+                }
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Graph generated successfully",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "graph": {
+                  "type": "string",
+                  "description": "HTML div containing the Plotly graph"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Missing graph parameters"
+          },
+          "404": {
+            "description": "Document not found or not an Excel file"
+          }
+        }
+      }
+    }
+  }
+}

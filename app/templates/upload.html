@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="fade-in">
+    <h2>Upload Document</h2>
+    <form method="POST" enctype="multipart/form-data">
+        <div class="mb-3">
+            <label for="file" class="form-label">Upload Document</label>
+            <input class="form-control" type="file" name="file" required>
+        </div>
+        <div class="mb-3">
+            <label for="question" class="form-label">Ask a Question</label>
+            <textarea class="form-control" name="question" rows="3" placeholder="Ask a question about the document"></textarea>
+        </div>
+        <div class="d-grid">
+            <input type="submit" value="Submit" class="btn btn-primary">
+        </div>
+    </form>
+
+    {% if answer %}
+    <div class="fade-in mt-4">
+        <h4>Answer:</h4>
+        <p>{{ answer }}</p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
