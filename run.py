@@ -1,10 +1,13 @@
-import sys
-import os
+from docuoracle_app import create_app, db
+from docuoracle_app.models import User, Document
+from flask_migrate import Migrate
 
-# Add the project root directory to the Python path
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+app = create_app()
+migrate = Migrate(app, db)
 
-from app import app
+@app.shell_context_processor
+def make_shell_context():
+    return {'db': db, 'User': User, 'Document': Document}
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     app.run(debug=True)

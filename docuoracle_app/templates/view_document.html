@@ -1,0 +1,166 @@
+{% extends "base.html" %}
+
+{% block title %}{{ document.filename }} - DocuOracle{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto">
+    <!-- Document Header -->
+    <div class="bg-dark-secondary rounded-lg p-4 sm:p-6 shadow-lg mb-6">
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <div>
+                <h1 class="text-2xl sm:text-3xl font-bold text-accent">{{ document.filename }}</h1>
+                <p class="text-light opacity-75 mt-1">Uploaded: {{ document.created_at.strftime('%B %d, %Y') }}</p>
+            </div>
+            <div class="flex gap-3">
+                <a href="{{ url_for('routes.home') }}"
+                   class="px-4 py-2 bg-dark-primary text-light rounded-lg hover:bg-opacity-80 transition-colors text-sm">
+                    Back to Home
+                </a>
+                <form action="{{ url_for('routes.delete_document', doc_id=document.id) }}"
+                      method="POST"
+                      class="inline"
+                      onsubmit="return confirm('Are you sure you want to delete this document?');">
+                    <button type="submit"
+                            class="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-400 transition-colors text-sm">
+                        Delete Document
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Document Content -->
+    <div class="bg-dark-secondary rounded-lg shadow-lg">
+        <!-- Tab Navigation -->
+        <div class="border-b border-dark-primary">
+            <div class="flex">
+                <button onclick="switchTab('content')"
+                        id="contentTab"
+                        class="px-6 py-3 text-light hover:bg-dark-primary transition-colors tab-active">
+                    Document Content
+                </button>
+                {% if dataframe is not none %}
+                <button onclick="switchTab('data')"
+                        id="dataTab"
+                        class="px-6 py-3 text-light hover:bg-dark-primary transition-colors">
+                    Data View
+                </button>
+                <button onclick="switchTab('stats')"
+                        id="statsTab"
+                        class="px-6 py-3 text-light hover:bg-dark-primary transition-colors">
+                    Statistics
+                </button>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Content Views -->
+        <div class="p-4 sm:p-6">
+            <!-- Document Text View -->
+            <div id="contentView" class="space-y-4">
+                {% if document_text %}
+                    <div class="bg-dark-primary rounded-lg p-4 overflow-x-auto">
+                        <pre class="text-light whitespace-pre-wrap font-mono text-sm">{{ document_text }}</pre>
+                    </div>
+                {% else %}
+                    <p class="text-light opacity-75 text-center py-8">No text content available for this document.</p>
+                {% endif %}
+            </div>
+
+            <!-- Data View -->
+            {% if dataframe is not none %}
+            <div id="dataView" class="hidden">
+                <div class="bg-dark-primary rounded-lg p-4 overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-700">
+                        <thead>
+                            <tr>
+                                {% for column in dataframe.columns %}
+                                <th class="px-4 py-2 text-left text-xs font-medium text-accent uppercase tracking-wider">
+                                    {{ column }}
+                                </th>
+                                {% endfor %}
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-700">
+                            {% for index, row in dataframe.iterrows() %}
+                            <tr class="hover:bg-dark-secondary transition-colors">
+                                {% for value in row %}
+                                <td class="px-4 py-2 text-sm text-light">
+                                    {{ value }}
+                                </td>
+                                {% endfor %}
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Statistics View -->
+            <div id="statsView" class="hidden">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <!-- Basic Info -->
+                    <div class="bg-dark-primary rounded-lg p-4">
+                        <h3 class="text-accent font-semibold mb-3">Basic Information</h3>
+                        <div class="space-y-2 text-sm">
+                            <p class="text-light">Rows: {{ dataframe.shape[0] }}</p>
+                            <p class="text-light">Columns: {{ dataframe.shape[1] }}</p>
+                            <p class="text-light">Missing Values: {{ dataframe.isna().sum().sum() }}</p>
+                        </div>
+                    </div>
+
+                    <!-- Numerical Columns Summary -->
+                    {% for column in dataframe.select_dtypes(include=['int64', 'float64']).columns %}
+                    <div class="bg-dark-primary rounded-lg p-4">
+                        <h3 class="text-accent font-semibold mb-3">{{ column }}</h3>
+                        <div class="space-y-2 text-sm">
+                            <p class="text-light">Mean: {{ '%.2f'|format(dataframe[column].mean()) }}</p>
+                            <p class="text-light">Median: {{ '%.2f'|format(dataframe[column].median()) }}</p>
+                            <p class="text-light">Std Dev: {{ '%.2f'|format(dataframe[column].std()) }}</p>
+                            <p class="text-light">Min: {{ '%.2f'|format(dataframe[column].min()) }}</p>
+                            <p class="text-light">Max: {{ '%.2f'|format(dataframe[column].max()) }}</p>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function switchTab(tabName) {
+    // Hide all views
+    document.getElementById('contentView').classList.add('hidden');
+    const dataView = document.getElementById('dataView');
+    const statsView = document.getElementById('statsView');
+    if (dataView) dataView.classList.add('hidden');
+    if (statsView) statsView.classList.add('hidden');
+
+    // Remove active class from all tabs
+    document.getElementById('contentTab').classList.remove('tab-active');
+    const dataTab = document.getElementById('dataTab');
+    const statsTab = document.getElementById('statsTab');
+    if (dataTab) dataTab.classList.remove('tab-active');
+    if (statsTab) statsTab.classList.remove('tab-active');
+
+    // Show selected view and activate tab
+    document.getElementById(tabName + 'View').classList.remove('hidden');
+    document.getElementById(tabName + 'Tab').classList.add('tab-active');
+}
+
+// Add these styles dynamically
+const style = document.createElement('style');
+style.textContent = `
+    .tab-active {
+        background-color: var(--dark-primary, #1a1a1a);
+        color: var(--accent, #60a5fa);
+        border-bottom: 2px solid var(--accent, #60a5fa);
+    }
+`;
+document.head.appendChild(style);
+</script>
+{% endblock %}

@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}DocuOracle{% endblock %}</title>
+
+    <!-- Inter font -->
+    <link rel="stylesheet" href="https://rsms.me/inter/inter.css">
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'dark-primary': '#1a1a1a',
+                        'dark-secondary': '#2d2d2d',
+                        'accent': '#60a5fa',
+                        'light': '#ffffff'
+                    }
+                },
+                fontFamily: {
+                    'sans': ['Inter', 'sans-serif'],
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-dark-primary text-light min-h-screen flex flex-col">
+    <!-- Navigation -->
+    <nav class="bg-dark-secondary shadow-lg">
+        <div class="container mx-auto px-6 py-4">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center space-x-6">
+                    <a href="{{ url_for('routes.home') }}" class="text-accent text-2xl font-bold">DocuOracle</a>
+                    {% if current_user.is_authenticated %}
+                        <a href="{{ url_for('routes.home') }}"
+                           class="text-light hover:text-accent transition-colors duration-300">
+                            Dashboard
+                        </a>
+                        <a href="{{ url_for('routes.upload') }}"
+                           class="text-light hover:text-accent transition-colors duration-300">
+                            Upload
+                        </a>
+                    {% endif %}
+                </div>
+                <div class="flex items-center space-x-6">
+                    {% if current_user.is_authenticated %}
+                        <a href="{{ url_for('routes.logout') }}"
+                           class="bg-accent text-dark-primary px-4 py-2 rounded-lg hover:bg-light transition-colors duration-300">
+                            Logout
+                        </a>
+                    {% else %}
+                        <a href="{{ url_for('routes.login') }}"
+                           class="text-light hover:text-accent transition-colors duration-300">
+                            Login
+                        </a>
+                        <a href="{{ url_for('routes.register') }}"
+                           class="bg-accent text-dark-primary px-4 py-2 rounded-lg hover:bg-light transition-colors duration-300">
+                            Register
+                        </a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Flash Messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            <div class="container mx-auto px-6 py-4">
+                {% for category, message in messages %}
+                    <div class="p-4 mb-4 rounded-lg {% if category == 'success' %}bg-green-500{% elif category == 'danger' %}bg-red-500{% else %}bg-blue-500{% endif %}">
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+    {% endwith %}
+
+    <!-- Main Content -->
+    <main class="container mx-auto px-6 py-8 flex-grow">
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-dark-secondary mt-auto">
+        <div class="container mx-auto px-6 py-4">
+            <p class="text-center text-light opacity-75">&copy; 2024 DocuOracle. All rights reserved.</p>
+        </div>
+    </footer>
+
+    {% block scripts %}{% endblock %}
+</body>
+</html>

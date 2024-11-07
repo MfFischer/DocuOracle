@@ -1,0 +1,188 @@
+{% extends "base.html" %}
+
+{% block title %}Upload Document - DocuOracle{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto">
+    <!-- Upload Section -->
+    <div class="bg-dark-secondary rounded-lg shadow-lg p-6 mb-8">
+        <h1 class="text-2xl font-bold text-accent mb-6">Upload Document</h1>
+
+        <form method="POST" enctype="multipart/form-data" class="space-y-6">
+            <!-- File Upload -->
+            <div class="space-y-2">
+                <label for="file" class="block text-light font-medium">Select Document</label>
+                <input type="file"
+                       name="file"
+                       id="file"
+                       accept=".pdf,.docx,.xlsx,.xls,.csv"
+                       class="w-full p-3 bg-dark-primary rounded-lg text-light
+                              file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0
+                              file:bg-accent file:text-dark-primary file:font-semibold
+                              hover:file:bg-light file:transition-colors">
+            </div>
+
+            <!-- Question Input -->
+            <div class="space-y-2">
+                <label for="question" class="block text-light font-medium">Ask a Question (Optional)</label>
+                <textarea name="question"
+                         id="question"
+                         rows="3"
+                         class="w-full p-3 bg-white rounded-lg text-dark-primary placeholder-gray-500 resize-y
+                                focus:ring-2 focus:ring-accent transition-all"
+                         placeholder="What would you like to know about the document?"></textarea>
+            </div>
+
+            <!-- Chart Options -->
+            {% if chart_types %}
+            <div class="space-y-2">
+                <label for="chart_type" class="block text-light font-medium">Visualization Type (Optional)</label>
+                <select name="chart_type"
+                        id="chart_type"
+                        class="w-full p-3 bg-white rounded-lg text-dark-primary
+                               focus:ring-2 focus:ring-accent transition-all">
+                    <option value="">Select visualization type...</option>
+                    {% for chart in chart_types %}
+                    <option value="{{ chart }}">{{ chart|title }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <!-- Column Selection -->
+            <div id="column-selection" class="space-y-4 hidden">
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="space-y-2">
+                        <label for="x_col" class="block text-light font-medium">X-Axis Column</label>
+                        <select name="x_col"
+                                id="x_col"
+                                class="w-full p-3 bg-white rounded-lg text-dark-primary
+                                       focus:ring-2 focus:ring-accent transition-all">
+                        </select>
+                    </div>
+                    <div class="space-y-2">
+                        <label for="y_col" class="block text-light font-medium">Y-Axis Column</label>
+                        <select name="y_col"
+                                id="y_col"
+                                class="w-full p-3 bg-white rounded-lg text-dark-primary
+                                       focus:ring-2 focus:ring-accent transition-all">
+                        </select>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Action Buttons -->
+            <div class="flex gap-4">
+                <button type="submit"
+                        name="action"
+                        value="ask"
+                        class="flex-1 bg-accent text-dark-primary hover:bg-blue-400 font-semibold
+                               py-3 px-6 rounded-lg shadow-md hover:shadow-lg transition-all">
+                    Ask Question
+                </button>
+                <button type="submit"
+                        name="action"
+                        value="analyze"
+                        class="flex-1 bg-green-500 text-white hover:bg-green-400 font-semibold
+                               py-3 px-6 rounded-lg shadow-md hover:shadow-lg transition-all">
+                    Analyze Data
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Results Section -->
+    {% if answer or graph %}
+    <div class="bg-dark-secondary rounded-lg shadow-lg p-6">
+        <h2 class="text-2xl font-bold text-accent mb-6">Results</h2>
+
+        {% if answer %}
+        <div class="mb-8">
+            <h3 class="text-xl font-semibold text-light mb-4">Document Analysis</h3>
+            <div class="bg-dark-primary p-4 rounded-lg">
+                <p class="text-light whitespace-pre-wrap">{{ answer }}</p>
+            </div>
+        </div>
+        {% endif %}
+
+        {% if graph %}
+        <div>
+            <h3 class="text-xl font-semibold text-light mb-4">Data Visualization</h3>
+            <div class="bg-dark-primary p-4 rounded-lg">
+                {{ graph|safe }}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    <!-- File List Section -->
+    {% if documents %}
+    <div class="mt-8 bg-dark-secondary rounded-lg shadow-lg p-6">
+        <h2 class="text-2xl font-bold text-accent mb-6">Your Documents</h2>
+        <div class="grid gap-4">
+            {% for doc in documents %}
+            <div class="bg-dark-primary rounded-lg p-4 flex items-center justify-between">
+                <div class="flex items-center space-x-4">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    <span class="text-light font-medium">{{ doc.filename }}</span>
+                </div>
+                <div class="flex items-center space-x-3">
+                    <a href="{{ url_for('routes.view_document', doc_id=doc.id) }}"
+                       class="bg-accent text-dark-primary hover:bg-blue-400 px-4 py-2 rounded-lg
+                              transition-colors text-sm font-medium">
+                        View
+                    </a>
+                    <form action="{{ url_for('routes.delete_document', doc_id=doc.id) }}"
+                          method="POST"
+                          class="inline"
+                          onsubmit="return confirm('Are you sure you want to delete this document?');">
+                        <button type="submit"
+                                class="bg-red-500 text-white hover:bg-red-400 px-4 py-2 rounded-lg
+                                       transition-colors text-sm font-medium">
+                            Delete
+                        </button>
+                    </form>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const fileInput = document.getElementById('file');
+    const chartTypeSelect = document.getElementById('chart_type');
+    const columnSelection = document.getElementById('column-selection');
+    const xColSelect = document.getElementById('x_col');
+    const yColSelect = document.getElementById('y_col');
+
+    if (fileInput && chartTypeSelect) {
+        fileInput.addEventListener('change', function() {
+            const file = this.files[0];
+            if (file && (file.name.endsWith('.csv') || file.name.endsWith('.xlsx') || file.name.endsWith('.xls'))) {
+                chartTypeSelect.parentElement.style.display = 'block';
+            } else {
+                chartTypeSelect.parentElement.style.display = 'none';
+                columnSelection.style.display = 'none';
+            }
+        });
+
+        chartTypeSelect.addEventListener('change', function() {
+            if (this.value) {
+                columnSelection.style.display = 'block';
+            // Here you would typically make an AJAX call to get columns
+            // For now, we'll just show the inputs
+        } else {
+            columnSelection.style.display = 'none';
+        }
+    });
+});
+</script>
+{% endblock %}

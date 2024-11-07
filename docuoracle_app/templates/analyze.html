@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+
+{% block title %}Analyze Document - DocuOracle{% endblock %}
+
+{% block content %}
+<div class="container fade-in">
+    <div class="card">
+        <h1 class="text-2xl font-bold text-accent mb-6">Analyze Document: {{ document.filename }}</h1>
+
+        <!-- Analysis Form -->
+        <form method="POST" class="mb-8">
+            <div class="form-group">
+                <label for="question" class="form-label">Ask a Question</label>
+                <textarea name="question"
+                          id="question"
+                          rows="3"
+                          class="w-full bg-dark-primary text-light p-3 rounded-lg border border-dark-secondary focus:border-accent"
+                          placeholder="What would you like to know about this document?"></textarea>
+            </div>
+
+            {% if chart_types %}
+            <div class="form-group">
+                <label for="chart_type" class="form-label">Visualization Type</label>
+                <select name="chart_type"
+                        id="chart_type"
+                        class="w-full bg-dark-primary text-light p-3 rounded-lg border border-dark-secondary focus:border-accent">
+                    <option value="">Select visualization type...</option>
+                    {% for chart in chart_types %}
+                    <option value="{{ chart }}">{{ chart|title }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div id="column-selection" style="display: none;">
+                <div class="form-group">
+                    <label for="x_col" class="form-label">X-Axis Column</label>
+                    <select name="x_col" id="x_col" class="w-full bg-dark-primary text-light p-3 rounded-lg border border-dark-secondary focus:border-accent"></select>
+                </div>
+                <div class="form-group">
+                    <label for="y_col" class="form-label">Y-Axis Column</label>
+                    <select name="y_col" id="y_col" class="w-full bg-dark-primary text-light p-3 rounded-lg border border-dark-secondary focus:border-accent"></select>
+                </div>
+            </div>
+            {% endif %}
+
+            <button type="submit"
+                    class="btn bg-accent text-dark-primary hover:bg-light mt-4">
+                Analyze Document
+            </button>
+        </form>
+
+        <!-- Results Section -->
+        {% if answer %}
+        <div class="card bg-dark-primary mb-6">
+            <h2 class="text-xl font-bold text-accent mb-4">Analysis Results</h2>
+            <div class="text-light">{{ answer }}</div>
+        </div>
+        {% endif %}
+
+        {% if graph %}
+        <div class="card bg-dark-primary">
+            <h2 class="text-xl font-bold text-accent mb-4">Data Visualization</h2>
+            <div class="visualization-container">
+                {{ graph|safe }}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const chartTypeSelect = document.getElementById('chart_type');
+    const columnSelection = document.getElementById('column-selection');
+
+    if (chartTypeSelect) {
+        chartTypeSelect.addEventListener('change', function() {
+            if (this.value) {
+                columnSelection.style.display = 'block';
+            } else {
+                columnSelection.style.display = 'none';
+            }
+        });
+    }
+});
+</script>
+{% endblock %}

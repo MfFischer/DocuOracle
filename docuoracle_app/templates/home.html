@@ -1,0 +1,162 @@
+{% extends "base.html" %}
+
+{% block title %}Home - DocuOracle{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto">
+    <!-- Welcome and Llama Section Container -->
+    <div class="space-y-4 max-w-2xl mx-auto mb-8">
+        <!-- Welcome Section -->
+        <div class="bg-dark-secondary rounded-lg p-4 sm:p-6 shadow-lg">
+            <h1 class="text-2xl sm:text-3xl font-bold text-accent">Welcome back, {{ current_user.username }}!</h1>
+            <p class="text-light mt-2 opacity-75">Manage your documents and perform analysis below.</p>
+        </div>
+
+        <!-- Llama Initialization Section -->
+        <div class="bg-dark-secondary rounded-lg p-4 shadow-lg">
+            <div class="flex items-center justify-between gap-4">
+                <div class="flex items-center gap-3">
+                    <div class="w-3 h-3 rounded-full" id="statusIndicator"></div>
+                    <div>
+                        <div class="text-accent text-sm font-medium">Llama Model Status</div>
+                        <p id="llamaStatus" class="text-light text-sm">Not initialized</p>
+                    </div>
+                </div>
+                <button onclick="initializeLlama()"
+                        id="initButton"
+                        class="bg-purple-500 hover:bg-purple-400 text-white px-4 py-1.5 rounded-md text-sm font-medium transition-colors">
+                    Initialize Model
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Grid Layout -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8">
+        <!-- Left Column: Document Selection and Question -->
+        <div class="space-y-6">
+            <div class="bg-dark-secondary rounded-lg p-4 sm:p-6 shadow-lg">
+                <h2 class="text-xl sm:text-2xl font-semibold text-accent mb-4">Document Analysis</h2>
+                <form method="POST" action="{{ url_for('routes.process_document') }}" class="space-y-4">
+                    <!-- Document Selection -->
+                    <div>
+                        <label class="block text-light mb-2" for="document_select">Select Document</label>
+                        <select name="document_id"
+                                id="document_select"
+                                class="w-full p-2 bg-white rounded-lg text-dark-primary"
+                                required>
+                            <option value="">Choose a document...</option>
+                            {% for doc in documents %}
+                            <option value="{{ doc.id }}">{{ doc.filename }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <!-- Upload New Document Link -->
+                    <div class="text-right">
+                        <a href="{{ url_for('routes.upload') }}"
+                           class="text-accent hover:text-blue-400 text-sm">
+                            + Upload new document
+                        </a>
+                    </div>
+
+                    <!-- Question Input -->
+                    <div>
+                        <label class="block text-light mb-2" for="question">Ask a Question</label>
+                        <textarea
+                            name="question"
+                            id="question"
+                            rows="3"
+                            required
+                            placeholder="What would you like to know about your document?"
+                            class="w-full p-3 bg-white rounded-lg text-dark-primary placeholder-gray-500 resize-y"></textarea>
+                    </div>
+
+                    <!-- Action Buttons -->
+                    <div class="flex flex-col sm:flex-row gap-4">
+                        <button type="submit"
+                                name="action"
+                                value="ask"
+                                id="askButton"
+                                disabled
+                                class="w-full sm:flex-1 bg-accent text-dark-primary hover:bg-blue-400 font-medium
+                                       py-2 px-4 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                            Ask Question
+                        </button>
+                        <button type="button"
+                                onclick="toggleAnalysisOptions()"
+                                class="w-full sm:flex-1 bg-green-500 text-white hover:bg-green-400 font-medium
+                                       py-2 px-4 rounded-lg transition-colors">
+                            Data Analysis
+                        </button>
+                    </div>
+
+                    <!-- Analysis Options -->
+                    <div id="analysisOptions" class="hidden space-y-4 p-4 bg-dark-primary rounded-lg">
+                        <!-- ... (keep existing analysis options) ... -->
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Right Column: Results -->
+        <!-- ... (keep existing right column code) ... -->
+    </div>
+
+    <!-- Recent Documents -->
+    <!-- ... (keep existing recent documents code) ... -->
+</div>
+
+{% block scripts %}
+<script>
+async function initializeLlama() {
+    const statusElement = document.getElementById('llamaStatus');
+    const statusIndicator = document.getElementById('statusIndicator');
+    const initButton = document.getElementById('initButton');
+    const askButton = document.getElementById('askButton');
+
+    try {
+        initButton.disabled = true;
+        initButton.textContent = 'Initializing...';
+        statusElement.textContent = 'Initializing...';
+        statusIndicator.className = 'w-3 h-3 rounded-full bg-yellow-400';
+
+        const response = await fetch('/api/initialize_llama');
+        const data = await response.json();
+
+        if (data.success) {
+            statusElement.textContent = 'Model Ready';
+            statusIndicator.className = 'w-3 h-3 rounded-full bg-green-400';
+            initButton.textContent = 'Initialized';
+            if (askButton) askButton.disabled = false;
+        } else {
+            statusElement.textContent = 'Initialization Failed';
+            statusIndicator.className = 'w-3 h-3 rounded-full bg-red-400';
+            initButton.textContent = 'Retry';
+            initButton.disabled = false;
+            if (askButton) askButton.disabled = true;
+        }
+    } catch (error) {
+        statusElement.textContent = 'Error';
+        statusIndicator.className = 'w-3 h-3 rounded-full bg-red-400';
+        initButton.textContent = 'Retry';
+        initButton.disabled = false;
+        if (askButton) askButton.disabled = true;
+    }
+}
+
+function toggleAnalysisOptions() {
+    const options = document.getElementById('analysisOptions');
+    options.classList.toggle('hidden');
+}
+
+// Initialize status indicator on page load
+document.addEventListener('DOMContentLoaded', function() {
+    const statusIndicator = document.getElementById('statusIndicator');
+    if (statusIndicator) {
+        statusIndicator.className = 'w-3 h-3 rounded-full bg-gray-400';
+    }
+});
+</script>
+{% endblock %}
+{% endblock %}

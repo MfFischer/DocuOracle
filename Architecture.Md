@@ -1,6 +1,6 @@
 docuoracle/
 │
-├── app/
+├── docuoracle_app/
 │   ├── __init__.py           # Initializes the Flask app
 │   ├── routes.py             # Handles routes for home, login, register, and document upload
 │   ├── api.py                # API endpoints for handling document and query requests
@@ -8,6 +8,7 @@ docuoracle/
 │   ├── utils.py              # Document parsing utilities (PDF, DOCX, Excel)
 │   ├── llama_handler.py      # LLaMA (Ollama) model handling logic
 │   ├── graph_handler.py      # Handles data analysis and graph generation
+│   ├── swagger_config.py 
 │   ├── templates/
 │   │   ├── base.html         # Base layout with header, footer, Bootstrap styling
 │   │   ├── home.html         # Home page with welcome message
