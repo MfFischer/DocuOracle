@@ -10,11 +10,16 @@ docuoracle/
 │   ├── graph_handler.py      # Handles data analysis and graph generation
 │   ├── swagger_config.py 
 │   ├── templates/
+│   │   ├── errors/ 
+│   │   │    ├── 404.html
+│   │   │    ├── 500.html
 │   │   ├── base.html         # Base layout with header, footer, Bootstrap styling
 │   │   ├── home.html         # Home page with welcome message
 │   │   ├── login.html        # Login form
 │   │   ├── register.html     # Registration form
-│   │   ├── upload.html       # Document upload and query input page
+│   │   ├── profile.html
+│   │   ├── settings.html
+│   │   ├── analyze.html
 │   ├── static/
 │   │   ├── styles.css        # Custom styles, if any
 │   │   └── swagger.json      # Swagger JSON documentation for API
@@ -34,5 +39,6 @@ docuoracle/
 │
 ├── requirements.txt          # Python dependencies (Flask, SQLAlchemy, etc.)
 ├── config.py                 # Configuration settings (SQLAlchemy DB URI, secret key, etc.)
+├── init_db.py                
 ├── run.py                    # Flask app entry point
 └── README.md                 # Project documentation

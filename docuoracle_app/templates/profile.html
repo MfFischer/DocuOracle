@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+
+{% block title %}Profile - DocuOracle{% endblock %}
+
+{% block content %}
+<!-- Background with animated gradient -->
+<div class="fixed inset-0 bg-gradient-to-br from-gray-900 via-purple-900 to-gray-900 animate-gradient"></div>
+
+<div class="relative min-h-screen">
+    <div class="container mx-auto px-4 py-8">
+        <!-- Profile Header -->
+        <div class="mb-8">
+            <h2 class="text-3xl font-bold text-white flex items-center">
+                <span>Profile</span>
+                <div class="ml-4 flex items-center space-x-2">
+                    <span class="px-3 py-1 text-sm bg-purple-600/20 text-purple-400 rounded-full">
+                        {{ documents_count }} Documents
+                    </span>
+                </div>
+            </h2>
+        </div>
+
+        <!-- Profile Information -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            <!-- User Info -->
+            <div class="lg:col-span-4">
+                <div class="rounded-xl bg-gray-800/50 backdrop-blur-md border border-purple-500/20 p-6">
+                    <div class="space-y-4">
+                        <div class="text-center">
+                            <div class="w-24 h-24 rounded-full bg-purple-600/20 mx-auto flex items-center justify-center">
+                                <span class="text-3xl text-purple-400">{{ user.username[0]|upper }}</span>
+                            </div>
+                            <h3 class="mt-4 text-xl font-bold text-white">{{ user.username }}</h3>
+                            <p class="text-gray-400">{{ user.email }}</p>
+                        </div>
+
+                        <div class="border-t border-gray-700 pt-4">
+                            <div class="flex justify-between items-center text-gray-300">
+                                <span>Member since</span>
+                                <span>{{ user.created_at.strftime('%B %d, %Y') }}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recent Activity -->
+            <div class="lg:col-span-8">
+                <div class="rounded-xl bg-gray-800/50 backdrop-blur-md border border-purple-500/20 p-6">
+                    <h3 class="text-xl font-bold text-white mb-4">Recent Documents</h3>
+                    {% if recent_documents %}
+                    <div class="space-y-4">
+                        {% for doc in recent_documents %}
+                        <div class="flex items-center justify-between p-4 rounded-lg bg-gray-900/50">
+                            <div>
+                                <h4 class="text-gray-200 font-medium">{{ doc.filename }}</h4>
+                                <p class="text-gray-500 text-sm">{{ doc.created_at.strftime('%Y-%m-%d %H:%M') }}</p>
+                            </div>
+                            <a href="{{ url_for('routes.view_document', doc_id=doc.id) }}"
+                               class="px-4 py-2 rounded-lg bg-purple-600 hover:bg-purple-500 text-white text-sm transition-colors">
+                                View
+                            </a>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <p class="text-gray-400">No documents yet</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

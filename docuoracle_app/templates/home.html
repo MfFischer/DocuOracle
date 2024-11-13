@@ -3,160 +3,482 @@
 {% block title %}Home - DocuOracle{% endblock %}
 
 {% block content %}
-<div class="max-w-7xl mx-auto">
-    <!-- Welcome and Llama Section Container -->
-    <div class="space-y-4 max-w-2xl mx-auto mb-8">
-        <!-- Welcome Section -->
-        <div class="bg-dark-secondary rounded-lg p-4 sm:p-6 shadow-lg">
-            <h1 class="text-2xl sm:text-3xl font-bold text-accent">Welcome back, {{ current_user.username }}!</h1>
-            <p class="text-light mt-2 opacity-75">Manage your documents and perform analysis below.</p>
-        </div>
-
-        <!-- Llama Initialization Section -->
-        <div class="bg-dark-secondary rounded-lg p-4 shadow-lg">
-            <div class="flex items-center justify-between gap-4">
-                <div class="flex items-center gap-3">
-                    <div class="w-3 h-3 rounded-full" id="statusIndicator"></div>
-                    <div>
-                        <div class="text-accent text-sm font-medium">Llama Model Status</div>
-                        <p id="llamaStatus" class="text-light text-sm">Not initialized</p>
-                    </div>
+<div class="min-h-screen bg-gray-900">
+    <!-- Header Section -->
+    <div class="px-6 py-4">
+        <div class="flex justify-between items-center">
+            <div>
+                <h1 class="text-2xl font-bold text-white">Welcome back!</h1>
+                <div class="flex items-center space-x-3 mt-1">
+                    <span class="text-sm text-purple-400">{{ documents|length }} Documents</span>
+                    <span class="text-sm text-blue-400">Premium User</span>
                 </div>
-                <button onclick="initializeLlama()"
-                        id="initButton"
-                        class="bg-purple-500 hover:bg-purple-400 text-white px-4 py-1.5 rounded-md text-sm font-medium transition-colors">
-                    Initialize Model
-                </button>
+                <p class="text-gray-400 text-sm mt-2">Ask questions about your documents or analyze data with advanced visualization.</p>
+            </div>
+            <div class="bg-gray-800/50 px-4 py-2 rounded-lg flex items-center space-x-2">
+                <div id="llamaStatusDot" class="w-2 h-2 rounded-full bg-green-500"></div>
+                <span class="text-sm text-gray-300">Llama Status: Connected</span>
             </div>
         </div>
     </div>
 
-    <!-- Main Grid Layout -->
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8">
-        <!-- Left Column: Document Selection and Question -->
-        <div class="space-y-6">
-            <div class="bg-dark-secondary rounded-lg p-4 sm:p-6 shadow-lg">
-                <h2 class="text-xl sm:text-2xl font-semibold text-accent mb-4">Document Analysis</h2>
-                <form method="POST" action="{{ url_for('routes.process_document') }}" class="space-y-4">
+    <!-- Main Content -->
+    <div class="px-6 py-4 grid grid-cols-3 gap-6">
+        <!-- Left Column (2/3 width) -->
+        <div class="col-span-2 space-y-6">
+            <!-- Document Selection Card -->
+            <div class="bg-gray-800/50 rounded-xl p-6">
+                <h2 class="text-lg font-medium text-white mb-4">Upload or Select Document</h2>
+                <div class="space-y-4">
+                    <!-- File Upload -->
+                    <div>
+                        <input type="file"
+                               id="fileInput"
+                               class="w-full p-4 rounded-lg bg-gray-900/50 border border-purple-500/20 text-gray-300
+                                      file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0
+                                      file:bg-purple-600 file:text-white file:font-medium
+                                      hover:file:bg-purple-500"
+                               accept=".pdf,.docx,.xlsx,.xls,.csv">
+                    </div>
+
                     <!-- Document Selection -->
                     <div>
-                        <label class="block text-light mb-2" for="document_select">Select Document</label>
-                        <select name="document_id"
-                                id="document_select"
-                                class="w-full p-2 bg-white rounded-lg text-dark-primary"
-                                required>
-                            <option value="">Choose a document...</option>
+                        <label class="block text-sm text-gray-400 mb-2">or Select Existing Document</label>
+                        <select id="document_select"
+                                onchange="handleDocumentSelect(this.value)"
+                                class="w-full bg-gray-900/50 border border-gray-700 rounded-lg px-4 py-2 text-white">
+                            <option value="">Select a document...</option>
                             {% for doc in documents %}
                             <option value="{{ doc.id }}">{{ doc.filename }}</option>
                             {% endfor %}
                         </select>
                     </div>
 
-                    <!-- Upload New Document Link -->
-                    <div class="text-right">
-                        <a href="{{ url_for('routes.upload') }}"
-                           class="text-accent hover:text-blue-400 text-sm">
-                            + Upload new document
-                        </a>
-                    </div>
-
-                    <!-- Question Input -->
-                    <div>
-                        <label class="block text-light mb-2" for="question">Ask a Question</label>
-                        <textarea
-                            name="question"
-                            id="question"
-                            rows="3"
-                            required
-                            placeholder="What would you like to know about your document?"
-                            class="w-full p-3 bg-white rounded-lg text-dark-primary placeholder-gray-500 resize-y"></textarea>
-                    </div>
-
                     <!-- Action Buttons -->
-                    <div class="flex flex-col sm:flex-row gap-4">
-                        <button type="submit"
-                                name="action"
-                                value="ask"
-                                id="askButton"
-                                disabled
-                                class="w-full sm:flex-1 bg-accent text-dark-primary hover:bg-blue-400 font-medium
-                                       py-2 px-4 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
-                            Ask Question
+                    <div class="flex space-x-4">
+                        <button onclick="showVisualizationOptions()"
+                                class="flex-1 bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-500 transition-colors">
+                            Data Visualization
                         </button>
-                        <button type="button"
-                                onclick="toggleAnalysisOptions()"
-                                class="w-full sm:flex-1 bg-green-500 text-white hover:bg-green-400 font-medium
-                                       py-2 px-4 rounded-lg transition-colors">
-                            Data Analysis
+                        <button onclick="quickAnalysis()"
+                                class="flex-1 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-500 transition-colors">
+                            Quick Analysis
                         </button>
                     </div>
 
-                    <!-- Analysis Options -->
-                    <div id="analysisOptions" class="hidden space-y-4 p-4 bg-dark-primary rounded-lg">
-                        <!-- ... (keep existing analysis options) ... -->
+                    <!-- Visualization Options -->
+                    <div id="visualizationOptions" class="space-y-4 hidden">
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm text-gray-400 mb-2">Chart Type</label>
+                                <select id="chartType"
+                                        onchange="handleChartTypeChange()"
+                                        class="w-full bg-gray-900/50 border border-gray-700 rounded-lg px-4 py-2 text-white">
+                                    <option value="line">Line Chart</option>
+                                    <option value="bar">Bar Chart</option>
+                                    <option value="scatter">Scatter Plot</option>
+                                    <option value="pie">Pie Chart</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm text-gray-400 mb-2">Color Theme</label>
+                                <select id="colorTheme" class="w-full bg-gray-900/50 border border-gray-700 rounded-lg px-4 py-2 text-white">
+                                    <option value="dark">Dark</option>
+                                    <option value="light">Light</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm text-gray-400 mb-2">X-Axis Column</label>
+                                <select id="x_col" class="w-full bg-gray-900/50 border border-gray-700 rounded-lg px-4 py-2 text-white">
+                                    <option value="">Select column...</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm text-gray-400 mb-2">Y-Axis Column</label>
+                                <select id="y_col" class="w-full bg-gray-900/50 border border-gray-700 rounded-lg px-4 py-2 text-white">
+                                    <option value="">Select column...</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <button onclick="generateVisualization()"
+                                class="w-full bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-500 transition-colors">
+                            Generate Visualization
+                        </button>
                     </div>
-                </form>
+                </div>
+            </div>
+
+            <!-- Visualization Area -->
+            <div id="visualizationArea" class="bg-gray-800/50 rounded-xl p-6 hidden">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-lg font-medium text-white">Visualization</h2>
+                    <div class="flex space-x-2">
+                        <button onclick="downloadVisualization()" class="p-2 text-gray-400 hover:text-white">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                      d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+                            </svg>
+                        </button>
+                        <button onclick="closeVisualization()" class="p-2 text-gray-400 hover:text-white">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+                <div id="visualizationContent" class="w-full min-h-[400px] bg-gray-900/50 rounded-lg p-4"></div>
             </div>
         </div>
 
-        <!-- Right Column: Results -->
-        <!-- ... (keep existing right column code) ... -->
-    </div>
+        <!-- Right Column: Chat -->
+        <div class="col-span-1">
+            <div class="bg-gray-800/50 rounded-xl p-6 sticky top-6">
+                <h2 class="text-lg font-medium text-white mb-4">Ask Questions</h2>
 
-    <!-- Recent Documents -->
-    <!-- ... (keep existing recent documents code) ... -->
+                <!-- Chat Messages -->
+                <div id="chatMessages" class="h-[400px] overflow-y-auto mb-4 space-y-4 custom-scrollbar">
+                    <div class="text-center text-gray-500">
+                        Select a document and ask a question
+                    </div>
+                </div>
+
+                <!-- Question Input -->
+                <form id="questionForm" class="relative" onsubmit="handleQuestionSubmit(event)">
+                    <textarea id="question"
+                             class="w-full bg-gray-900/50 border border-gray-700 rounded-lg px-4 py-2 pr-12 text-white resize-none"
+                             placeholder="Type your question..."
+                             rows="2"></textarea>
+                    <button type="submit"
+                            class="absolute right-2 bottom-2 p-2 bg-purple-600 text-white rounded-lg hover:bg-purple-500 transition-colors">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/>
+                        </svg>
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
 </div>
 
-{% block scripts %}
+<!-- Loading Overlay -->
+<div id="loadingOverlay" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 hidden items-center justify-center">
+    <div class="bg-gray-800 rounded-lg p-6 shadow-xl flex items-center space-x-4">
+        <div class="animate-spin rounded-full h-8 w-8 border-4 border-purple-500 border-t-transparent"></div>
+        <span class="text-white text-lg" id="loadingMessage">Processing...</span>
+    </div>
+</div>
+
 <script>
-async function initializeLlama() {
-    const statusElement = document.getElementById('llamaStatus');
-    const statusIndicator = document.getElementById('statusIndicator');
-    const initButton = document.getElementById('initButton');
-    const askButton = document.getElementById('askButton');
+// Global variables
+let selectedDocument = null;
+let currentVisualization = null;
 
+// Document selection handler
+function handleDocumentSelect(docId) {
+    selectedDocument = docId;
+    if (docId) {
+        // Enable question input
+        document.getElementById('question').disabled = false;
+        loadDocumentColumns(docId);
+    }
+}
+
+// Load columns for visualization
+async function loadDocumentColumns(docId) {
     try {
-        initButton.disabled = true;
-        initButton.textContent = 'Initializing...';
-        statusElement.textContent = 'Initializing...';
-        statusIndicator.className = 'w-3 h-3 rounded-full bg-yellow-400';
-
-        const response = await fetch('/api/initialize_llama');
+        showLoading('Loading columns...');
+        const response = await fetch(`/api/get_columns/${docId}`);
         const data = await response.json();
 
         if (data.success) {
-            statusElement.textContent = 'Model Ready';
-            statusIndicator.className = 'w-3 h-3 rounded-full bg-green-400';
-            initButton.textContent = 'Initialized';
-            if (askButton) askButton.disabled = false;
-        } else {
-            statusElement.textContent = 'Initialization Failed';
-            statusIndicator.className = 'w-3 h-3 rounded-full bg-red-400';
-            initButton.textContent = 'Retry';
-            initButton.disabled = false;
-            if (askButton) askButton.disabled = true;
+            const xCol = document.getElementById('x_col');
+            const yCol = document.getElementById('y_col');
+
+            // Clear existing options
+            xCol.innerHTML = '<option value="">Select column...</option>';
+            yCol.innerHTML = '<option value="">Select column...</option>';
+
+            // Add all columns to X-axis
+            data.columns.all.forEach(col => {
+                xCol.add(new Option(col, col));
+            });
+
+            // Add numeric columns to Y-axis
+            data.columns.numeric.forEach(col => {
+                yCol.add(new Option(col, col));
+            });
         }
+        hideLoading();
     } catch (error) {
-        statusElement.textContent = 'Error';
-        statusIndicator.className = 'w-3 h-3 rounded-full bg-red-400';
-        initButton.textContent = 'Retry';
-        initButton.disabled = false;
-        if (askButton) askButton.disabled = true;
+        console.error('Error loading columns:', error);
+        showToast('Error loading columns', 'error');
+        hideLoading();
     }
 }
 
-function toggleAnalysisOptions() {
-    const options = document.getElementById('analysisOptions');
-    options.classList.toggle('hidden');
+// Generate visualization
+async function generateVisualization() {
+    if (!selectedDocument) {
+        showToast('Please select a document first', 'warning');
+        return;
+    }
+
+    const config = {
+        chartType: document.getElementById('chartType').value,
+        xColumn: document.getElementById('x_col').value,
+        yColumn: document.getElementById('y_col').value,
+        colorTheme: document.getElementById('colorTheme').value,
+    };
+
+    if (!config.xColumn || !config.yColumn) {
+        showToast('Please select both X and Y axis columns', 'warning');
+        return;
+    }
+
+    try {
+        showLoading('Generating visualization...');
+        const response = await fetch('/generate_visualization', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                document_id: selectedDocument,
+                config: config
+            })
+        });
+
+        const data = await response.json();
+        hideLoading();
+
+        if (data.success) {
+            const visualizationArea = document.getElementById('visualizationArea');
+            const visualizationContent = document.getElementById('visualizationContent');
+
+            visualizationContent.innerHTML = data.visualization;
+            visualizationArea.classList.remove('hidden');
+            currentVisualization = data.visualization;
+            showToast('Visualization generated successfully', 'success');
+        } else {
+            throw new Error(data.error || 'Failed to generate visualization');
+        }
+    } catch (error) {
+        hideLoading();
+        showToast('Error generating visualization: ' + error.message, 'error');
+    }
 }
 
-// Initialize status indicator on page load
+// Handle question submission
+async function handleQuestionSubmit(event) {
+    event.preventDefault();
+
+    if (!selectedDocument) {
+        showToast('Please select a document first', 'warning');
+        return;
+    }
+
+    const question = document.getElementById('question').value.trim();
+    if (!question) return;
+
+    try {
+        showLoading('Processing question...');
+
+        // Add user message to chat
+        addChatMessage('You', question);
+
+        // Clear input
+        document.getElementById('question').value = '';
+
+        const response = await fetch('/process_document', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                document_id: selectedDocument,
+                question: question
+            })
+        });
+
+        const data = await response.json();
+        hideLoading();
+
+        if (data.success) {
+            addChatMessage('Assistant', data.answer);
+        } else {
+            throw new Error(data.error || 'Failed to process question');
+        }
+    } catch (error) {
+        hideLoading();
+        showToast('Error processing question: ' + error.message, 'error');
+    }
+}
+
+// Add message to chat
+function addChatMessage(sender, message) {
+    const chatMessages = document.getElementById('chatMessages');
+    const messageDiv = document.createElement('div');
+    messageDiv.className = `p-3 rounded-lg ${
+        sender === 'You' ? 'bg-purple-600/20 ml-auto' : 'bg-gray-900/50'
+    } max-w-[80%]`;
+
+    messageDiv.innerHTML = `
+        <div class="text-sm text-gray-400">${sender}</div>
+        <div class="text-white">${message}</div>
+    `;
+
+    chatMessages.appendChild(messageDiv);
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+}
+
+// Show/hide visualization options
+function showVisualizationOptions() {
+    document.getElementById('visualizationOptions').classList.remove('hidden');
+}
+
+// Close visualization
+function closeVisualization() {
+    document.getElementById('visualizationArea').classList.add('hidden');
+}
+
+// Download visualization
+function downloadVisualization() {
+    const visualizationContent = document.getElementById('visualizationContent');
+    if (!visualizationContent) return;
+
+    try {
+        html2canvas(visualizationContent).then(canvas => {
+            const link = document.createElement('a');
+            link.download = 'visualization.png';
+            link.href = canvas.toDataURL('image/png');
+            link.click();
+        });
+    } catch (error) {
+        showToast('Failed to download visualization', 'error');
+        console.error('Download error:', error);
+    }
+}
+
+// Utility functions
+function showLoading(message = 'Processing...') {
+    const overlay = document.getElementById('loadingOverlay');
+    const messageEl = document.getElementById('loadingMessage');
+    if (overlay && messageEl) {
+        messageEl.textContent = message;
+        overlay.classList.remove('hidden');
+        overlay.classList.add('flex');
+    }
+}
+
+function hideLoading() {
+    const overlay = document.getElementById('loadingOverlay');
+    if (overlay) {
+        overlay.classList.add('hidden');
+        overlay.classList.remove('flex');
+    }
+}
+
+function showToast(message, type = 'info') {
+    const toast = document.createElement('div');
+    toast.className = `fixed bottom-4 right-4 px-6 py-3 rounded-lg text-white transform
+                      transition-all duration-300 ease-in-out ${
+        type === 'error' ? 'bg-red-500' :
+        type === 'success' ? 'bg-green-500' :
+        type === 'warning' ? 'bg-yellow-500' :
+        'bg-blue-500'
+    }`;
+
+    toast.textContent = message;
+    document.body.appendChild(toast);
+
+    setTimeout(() => {
+        toast.classList.add('opacity-0', 'translate-y-2');
+        setTimeout(() => toast.remove(), 300);
+    }, 3000);
+}
+
+// Initialize on page load
 document.addEventListener('DOMContentLoaded', function() {
-    const statusIndicator = document.getElementById('statusIndicator');
-    if (statusIndicator) {
-        statusIndicator.className = 'w-3 h-3 rounded-full bg-gray-400';
+    // Enable question input if document is selected
+    const docSelect = document.getElementById('document_select');
+    const questionInput = document.getElementById('question');
+
+    if (docSelect && questionInput) {
+        selectedDocument = docSelect.value;
+        questionInput.disabled = !selectedDocument;
+    }
+
+    // Auto-resize textarea
+    if (questionInput) {
+        questionInput.addEventListener('input', function() {
+            this.style.height = 'auto';
+            this.style.height = (this.scrollHeight) + 'px';
+        });
+    }
+
+    // Load columns if document is selected
+    if (selectedDocument) {
+        loadDocumentColumns(selectedDocument);
     }
 });
 </script>
-{% endblock %}
+
+<style>
+/* Custom scrollbar for chat */
+.custom-scrollbar::-webkit-scrollbar {
+    width: 4px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 2px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.3);
+}
+
+/* Smooth transitions */
+.transition-all {
+    transition-property: all;
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+    transition-duration: 150ms;
+}
+
+/* Loading animation */
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+.animate-spin {
+    animation: spin 1s linear infinite;
+}
+
+/* Toast animations */
+@keyframes slideIn {
+    from { transform: translateX(100%); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+}
+
+@keyframes slideOut {
+    from { transform: translateX(0); opacity: 1; }
+    to { transform: translateX(100%); opacity: 0; }
+}
+
+.slide-in {
+    animation: slideIn 0.3s ease-out;
+}
+
+.slide-out {
+    animation: slideOut 0.3s ease-in forwards;
+}
+</style>
 {% endblock %}

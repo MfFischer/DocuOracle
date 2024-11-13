@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+
+{% block title %}Settings - DocuOracle{% endblock %}
+
+{% block content %}
+<!-- Background with animated gradient -->
+<div class="fixed inset-0 bg-gradient-to-br from-gray-900 via-purple-900 to-gray-900 animate-gradient"></div>
+
+<div class="relative min-h-screen">
+    <div class="container mx-auto px-4 py-8">
+        <!-- Settings Header -->
+        <div class="mb-8">
+            <h2 class="text-3xl font-bold text-white">Settings</h2>
+            <p class="text-gray-400 mt-2">Manage your account settings and preferences</p>
+        </div>
+
+        <!-- Settings Sections -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <!-- Profile Settings -->
+            <div class="space-y-6">
+                <div class="rounded-xl bg-gray-800/50 backdrop-blur-md border border-purple-500/20 p-6">
+                    <h3 class="text-xl font-bold text-white mb-4">Profile Settings</h3>
+                    <form method="POST" class="space-y-4">
+                        <input type="hidden" name="action" value="update_profile">
+
+                        <div class="space-y-2">
+                            <label class="block text-gray-300">Username</label>
+                            <input type="text"
+                                   name="username"
+                                   value="{{ current_user.username }}"
+                                   class="w-full p-3 rounded-lg bg-gray-900/50 border border-purple-500/20 text-white
+                                          focus:ring-2 focus:ring-purple-500 focus:border-transparent">
+                        </div>
+
+                        <div class="space-y-2">
+                            <label class="block text-gray-300">Email</label>
+                            <input type="email"
+                                   name="email"
+                                   value="{{ current_user.email }}"
+                                   class="w-full p-3 rounded-lg bg-gray-900/50 border border-purple-500/20 text-white
+                                          focus:ring-2 focus:ring-purple-500 focus:border-transparent">
+                        </div>
+
+                        <button type="submit"
+                                class="w-full py-3 rounded-lg bg-purple-600 hover:bg-purple-500 text-white font-medium
+                                       transition-colors">
+                            Update Profile
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Password Settings -->
+            <div class="space-y-6">
+                <div class="rounded-xl bg-gray-800/50 backdrop-blur-md border border-purple-500/20 p-6">
+                    <h3 class="text-xl font-bold text-white mb-4">Change Password</h3>
+                    <form method="POST" class="space-y-4">
+                        <input type="hidden" name="action" value="change_password">
+
+                        <div class="space-y-2">
+                            <label class="block text-gray-300">Current Password</label>
+                            <input type="password"
+                                   name="current_password"
+                                   class="w-full p-3 rounded-lg bg-gray-900/50 border border-purple-500/20 text-white
+                                          focus:ring-2 focus:ring-purple-500 focus:border-transparent">
+                        </div>
+
+                        <div class="space-y-2">
+                            <label class="block text-gray-300">New Password</label>
+                            <input type="password"
+                                   name="new_password"
+                                   class="w-full p-3 rounded-lg bg-gray-900/50 border border-purple-500/20 text-white
+                                          focus:ring-2 focus:ring-purple-500 focus:border-transparent">
+                        </div>
+
+                        <div class="space-y-2">
+                            <label class="block text-gray-300">Confirm New Password</label>
+                            <input type="password"
+                                   name="confirm_password"
+                                   class="w-full p-3 rounded-lg bg-gray-900/50 border border-purple-500/20 text-white
+                                          focus:ring-2 focus:ring-purple-500 focus:border-transparent">
+                        </div>
+
+                        <button type="submit"
+                                class="w-full py-3 rounded-lg bg-purple-600 hover:bg-purple-500 text-white font-medium
+                                       transition-colors">
+                            Update Password
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

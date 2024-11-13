@@ -1,17 +1,143 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}DocuOracle{% endblock %}</title>
+
+    <!-- Meta tags -->
+    <meta name="description" content="AI-powered document analysis and visualization platform">
+    <meta name="theme-color" content="#1a1a1a">
 
     <!-- Inter font -->
     <link rel="stylesheet" href="https://rsms.me/inter/inter.css">
 
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Alpine.js -->
+    <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
+
+    <!-- Base Styles -->
+    <style>
+        [x-cloak] { display: none !important; }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes fadeOut {
+            from { opacity: 1; transform: translateY(0); }
+            to { opacity: 0; transform: translateY(-10px); }
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .fade-in {
+            animation: fadeIn 0.3s ease-out;
+        }
+
+        .fade-out {
+            animation: fadeOut 0.3s ease-in forwards;
+        }
+
+        .loading-pulse {
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+
+        /* Improved prose styles */
+        .prose-invert {
+            color: #ffffff;
+        }
+
+        .prose-invert h1, .prose-invert h2, .prose-invert h3 {
+            color: #60a5fa;
+            margin-top: 1.5em;
+            margin-bottom: 0.5em;
+            font-weight: 600;
+        }
+
+        .prose-invert p {
+            margin-bottom: 1em;
+            line-height: 1.6;
+        }
+
+        .prose-invert ul, .prose-invert ol {
+            margin-left: 1.5em;
+            margin-bottom: 1em;
+        }
+
+        .prose-invert li {
+            margin-bottom: 0.5em;
+            line-height: 1.5;
+        }
+
+        .prose-invert pre {
+            background-color: rgba(45, 45, 45, 0.7);
+            padding: 1em;
+            border-radius: 0.5em;
+            margin: 1em 0;
+            overflow-x: auto;
+        }
+
+        .prose-invert code {
+            background-color: rgba(45, 45, 45, 0.5);
+            padding: 0.2em 0.4em;
+            border-radius: 0.3em;
+            font-size: 0.9em;
+        }
+
+        /* Visualization container styles */
+        .visualization-container {
+            background: rgba(45, 45, 45, 0.7);
+            backdrop-filter: blur(10px);
+            border-radius: 0.5rem;
+            padding: 1rem;
+            margin-top: 1rem;
+            border: 1px solid rgba(96, 165, 250, 0.2);
+        }
+
+        /* Chat container styles */
+        .chat-container {
+            margin-top: 2rem;
+            border-top: 1px solid rgba(96, 165, 250, 0.2);
+            padding-top: 1rem;
+        }
+
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: rgba(45, 45, 45, 0.5);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: rgba(96, 165, 250, 0.5);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(96, 165, 250, 0.7);
+        }
+    </style>
+
+    <!-- Tailwind Config -->
     <script>
         tailwind.config = {
+            darkMode: 'class',
             theme: {
                 extend: {
                     colors: {
@@ -19,46 +145,84 @@
                         'dark-secondary': '#2d2d2d',
                         'accent': '#60a5fa',
                         'light': '#ffffff'
+                    },
+                    spacing: {
+                        '128': '32rem',
+                    },
+                    maxHeight: {
+                        '128': '32rem',
                     }
                 },
                 fontFamily: {
-                    'sans': ['Inter', 'sans-serif'],
+                    'sans': ['Inter var', 'Inter', 'system-ui', 'sans-serif'],
                 }
             }
         }
     </script>
+
+    {% block styles %}{% endblock %}
 </head>
-<body class="bg-dark-primary text-light min-h-screen flex flex-col">
+<body class="bg-dark-primary text-light min-h-screen flex flex-col" x-data="{ isDark: true }">
     <!-- Navigation -->
-    <nav class="bg-dark-secondary shadow-lg">
-        <div class="container mx-auto px-6 py-4">
-            <div class="flex items-center justify-between">
+    <nav class="sticky top-0 z-40 backdrop-blur-md bg-dark-secondary/80 shadow-lg border-b border-accent/20">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
                 <div class="flex items-center space-x-6">
-                    <a href="{{ url_for('routes.home') }}" class="text-accent text-2xl font-bold">DocuOracle</a>
+                    <a href="{{ url_for('routes.home') }}" class="flex items-center space-x-2">
+                        <span class="text-2xl font-bold bg-gradient-to-r from-accent to-blue-400 bg-clip-text text-transparent">
+                            DocuOracle
+                        </span>
+                    </a>
                     {% if current_user.is_authenticated %}
-                        <a href="{{ url_for('routes.home') }}"
-                           class="text-light hover:text-accent transition-colors duration-300">
-                            Dashboard
-                        </a>
-                        <a href="{{ url_for('routes.upload') }}"
-                           class="text-light hover:text-accent transition-colors duration-300">
-                            Upload
-                        </a>
+                        <div class="hidden md:flex space-x-6">
+                            <a href="{{ url_for('routes.home') }}"
+                               class="text-light/80 hover:text-light transition-colors duration-300">
+                                Dashboard
+                            </a>
+                        </div>
                     {% endif %}
                 </div>
-                <div class="flex items-center space-x-6">
+
+                <!-- Right Navigation -->
+                <div class="flex items-center space-x-4">
                     {% if current_user.is_authenticated %}
-                        <a href="{{ url_for('routes.logout') }}"
-                           class="bg-accent text-dark-primary px-4 py-2 rounded-lg hover:bg-light transition-colors duration-300">
-                            Logout
-                        </a>
+                        <!-- User Menu -->
+                        <div x-data="{ isOpen: false }" class="relative">
+                            <button @click="isOpen = !isOpen"
+                                    class="flex items-center space-x-2 p-2 rounded-lg bg-dark-primary/50 hover:bg-dark-primary/70 transition-colors">
+                                <span class="text-sm">{{ current_user.username }}</span>
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                                </svg>
+                            </button>
+
+                            <div x-show="isOpen"
+                                 @click.away="isOpen = false"
+                                 x-cloak
+                                 class="absolute right-0 mt-2 w-48 rounded-lg bg-dark-secondary/90 shadow-lg ring-1 ring-black ring-opacity-5 backdrop-blur-sm py-1
+                                        transition-all duration-200 ease-out origin-top-right">
+                                <a href="{{ url_for('routes.profile') }}"
+                                   class="block px-4 py-2 text-sm text-light/80 hover:bg-accent/20 transition-colors">
+                                    Profile
+                                </a>
+                                <a href="{{ url_for('routes.settings') }}"
+                                   class="block px-4 py-2 text-sm text-light/80 hover:bg-accent/20 transition-colors">
+                                    Settings
+                                </a>
+                                <div class="border-t border-accent/20 my-1"></div>
+                                <a href="{{ url_for('routes.logout') }}"
+                                   class="block px-4 py-2 text-sm text-red-400 hover:bg-accent/20 transition-colors">
+                                    Logout
+                                </a>
+                            </div>
+                        </div>
                     {% else %}
                         <a href="{{ url_for('routes.login') }}"
-                           class="text-light hover:text-accent transition-colors duration-300">
+                           class="text-light/80 hover:text-light transition-colors duration-300">
                             Login
                         </a>
                         <a href="{{ url_for('routes.register') }}"
-                           class="bg-accent text-dark-primary px-4 py-2 rounded-lg hover:bg-light transition-colors duration-300">
+                           class="bg-accent text-dark-primary px-4 py-2 rounded-lg hover:bg-accent/90 transition-colors duration-300">
                             Register
                         </a>
                     {% endif %}
@@ -68,29 +232,98 @@
     </nav>
 
     <!-- Flash Messages -->
-    {% with messages = get_flashed_messages(with_categories=true) %}
-        {% if messages %}
-            <div class="container mx-auto px-6 py-4">
+    <div id="flash-messages" class="fixed top-4 right-4 z-50 space-y-2">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
                 {% for category, message in messages %}
-                    <div class="p-4 mb-4 rounded-lg {% if category == 'success' %}bg-green-500{% elif category == 'danger' %}bg-red-500{% else %}bg-blue-500{% endif %}">
-                        {{ message }}
+                    <div class="p-4 rounded-lg shadow-lg fade-in backdrop-blur-sm
+                              {% if category == 'success' %}bg-green-500/90
+                              {% elif category == 'danger' %}bg-red-500/90
+                              {% else %}bg-blue-500/90{% endif %}
+                              flex items-center justify-between">
+                        <span>{{ message }}</span>
+                        <button onclick="this.parentElement.remove()"
+                                class="ml-4 text-white/80 hover:text-white transition-colors">
+                            &times;
+                        </button>
                     </div>
                 {% endfor %}
-            </div>
-        {% endif %}
-    {% endwith %}
+            {% endif %}
+        {% endwith %}
+    </div>
 
     <!-- Main Content -->
-    <main class="container mx-auto px-6 py-8 flex-grow">
-        {% block content %}{% endblock %}
+    <main class="flex-grow">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            {% block content %}{% endblock %}
+        </div>
     </main>
 
     <!-- Footer -->
-    <footer class="bg-dark-secondary mt-auto">
-        <div class="container mx-auto px-6 py-4">
-            <p class="text-center text-light opacity-75">&copy; 2024 DocuOracle. All rights reserved.</p>
+    <footer class="bg-dark-secondary/80 backdrop-blur-md mt-auto border-t border-accent/20">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+            <p class="text-center text-light/75">&copy; {{ current_year|default(2024) }} DocuOracle. All rights reserved.</p>
         </div>
     </footer>
+
+    <!-- Common Scripts -->
+    <script>
+        // Flash message handling
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('flash-messages');
+            const toast = document.createElement('div');
+
+            const bgColor = type === 'success' ? 'bg-green-500/90' :
+                           type === 'error' ? 'bg-red-500/90' :
+                           'bg-blue-500/90';
+
+            toast.className = `p-4 rounded-lg shadow-lg fade-in backdrop-blur-sm ${bgColor} flex items-center justify-between`;
+            toast.innerHTML = `
+                <span>${message}</span>
+                <button onclick="this.parentElement.remove()" class="ml-4 text-white/80 hover:text-white transition-colors">
+                    &times;
+                </button>
+            `;
+
+            container.appendChild(toast);
+            setTimeout(() => {
+                toast.classList.add('fade-out');
+                setTimeout(() => toast.remove(), 300);
+            }, 5000);
+        }
+
+        // Loading state handlers
+        function setLoading(element, state, message = 'Loading...') {
+            if (state) {
+                element.classList.add('loading-pulse');
+                element.disabled = true;
+                element._originalContent = element.innerHTML;
+                element.innerHTML = `
+                    <svg class="animate-spin h-5 w-5 mr-2" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    ${message}
+                `;
+            } else {
+                element.classList.remove('loading-pulse');
+                element.disabled = false;
+                element.innerHTML = element._originalContent;
+            }
+        }
+
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            // Auto-dismiss flash messages
+            const flashMessages = document.querySelectorAll('#flash-messages > div');
+            flashMessages.forEach(message => {
+                setTimeout(() => {
+                    message.classList.add('fade-out');
+                    setTimeout(() => message.remove(), 300);
+                }, 5000);
+            });
+        });
+    </script>
 
     {% block scripts %}{% endblock %}
 </body>

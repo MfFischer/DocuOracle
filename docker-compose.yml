@@ -1,0 +1,14 @@
+services:
+  llama-api:
+    image: ghcr.io/ggerganov/llama.cpp:full
+    container_name: llama-api
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./models:/models
+    command: >
+      --server 
+      -m /models/mistral-7b-instruct-v0.1.Q4_K_M.gguf
+      -c 2048
+      --port 8000
+      --host 0.0.0.0

@@ -1,0 +1,14 @@
+/* static/css/custom.css */
+select:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+select:not(:disabled) {
+    cursor: pointer;
+}
+
+/* Add transition for smoother enabling/disabling */
+select {
+    transition: opacity 0.2s ease-in-out;
+}

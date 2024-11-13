@@ -3,85 +3,561 @@
 {% block title %}Analyze Document - DocuOracle{% endblock %}
 
 {% block content %}
-<div class="container fade-in">
-    <div class="card">
-        <h1 class="text-2xl font-bold text-accent mb-6">Analyze Document: {{ document.filename }}</h1>
+<!-- Background with animated gradient -->
+<div class="fixed inset-0 bg-gradient-to-br from-gray-900 via-purple-900 to-gray-900 animate-gradient"></div>
 
-        <!-- Analysis Form -->
-        <form method="POST" class="mb-8">
-            <div class="form-group">
-                <label for="question" class="form-label">Ask a Question</label>
-                <textarea name="question"
-                          id="question"
-                          rows="3"
-                          class="w-full bg-dark-primary text-light p-3 rounded-lg border border-dark-secondary focus:border-accent"
-                          placeholder="What would you like to know about this document?"></textarea>
-            </div>
-
-            {% if chart_types %}
-            <div class="form-group">
-                <label for="chart_type" class="form-label">Visualization Type</label>
-                <select name="chart_type"
-                        id="chart_type"
-                        class="w-full bg-dark-primary text-light p-3 rounded-lg border border-dark-secondary focus:border-accent">
-                    <option value="">Select visualization type...</option>
-                    {% for chart in chart_types %}
-                    <option value="{{ chart }}">{{ chart|title }}</option>
-                    {% endfor %}
-                </select>
-            </div>
-
-            <div id="column-selection" style="display: none;">
-                <div class="form-group">
-                    <label for="x_col" class="form-label">X-Axis Column</label>
-                    <select name="x_col" id="x_col" class="w-full bg-dark-primary text-light p-3 rounded-lg border border-dark-secondary focus:border-accent"></select>
-                </div>
-                <div class="form-group">
-                    <label for="y_col" class="form-label">Y-Axis Column</label>
-                    <select name="y_col" id="y_col" class="w-full bg-dark-primary text-light p-3 rounded-lg border border-dark-secondary focus:border-accent"></select>
-                </div>
-            </div>
-            {% endif %}
-
-            <button type="submit"
-                    class="btn bg-accent text-dark-primary hover:bg-light mt-4">
-                Analyze Document
-            </button>
-        </form>
-
-        <!-- Results Section -->
-        {% if answer %}
-        <div class="card bg-dark-primary mb-6">
-            <h2 class="text-xl font-bold text-accent mb-4">Analysis Results</h2>
-            <div class="text-light">{{ answer }}</div>
-        </div>
-        {% endif %}
-
-        {% if graph %}
-        <div class="card bg-dark-primary">
-            <h2 class="text-xl font-bold text-accent mb-4">Data Visualization</h2>
-            <div class="visualization-container">
-                {{ graph|safe }}
-            </div>
-        </div>
-        {% endif %}
+<!-- Loading Overlay -->
+<div id="loadingOverlay" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 hidden flex items-center justify-center">
+    <div class="bg-gray-800/90 rounded-lg p-6 shadow-xl flex items-center space-x-4">
+        <div class="animate-spin rounded-full h-8 w-8 border-4 border-purple-500 border-t-transparent"></div>
+        <span class="text-white text-lg" id="loadingMessage">Processing...</span>
     </div>
 </div>
+
+<div class="relative min-h-screen container mx-auto px-4 py-6">
+    <div class="rounded-xl bg-gray-800/50 backdrop-blur-md border border-purple-500/20 p-6">
+        <!-- Header -->
+        <div class="flex justify-between items-center mb-6">
+            <h1 class="text-2xl font-bold text-white">
+                Analyze Document: <span class="text-purple-400">{{ document.filename }}</span>
+            </h1>
+
+            <!-- Llama Status -->
+            <div class="flex items-center space-x-3 bg-gray-900/50 px-4 py-2 rounded-lg">
+                <div class="w-2 h-2 rounded-full" id="statusIndicator"></div>
+                <span class="text-sm text-gray-300" id="llamaStatus">Not Connected</span>
+                <button onclick="initializeLlama()"
+                        id="initButton"
+                        class="text-xs px-3 py-1 rounded-full bg-purple-600 hover:bg-purple-500 text-white transition-colors">
+                    Initialize
+                </button>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <!-- Left Column: Analysis Controls -->
+            <div class="space-y-6">
+                <form id="analysisForm" class="space-y-6">
+                    <!-- Question Input -->
+                    <div class="space-y-2">
+                        <label class="block text-gray-300 font-medium">Ask a Question</label>
+                        <textarea name="question"
+                                id="question"
+                                rows="3"
+                                required
+                                class="w-full p-4 rounded-lg bg-gray-900/50 border border-purple-500/20 text-white
+                                       placeholder-gray-500 focus:ring-2 focus:ring-purple-500 focus:border-transparent
+                                       transition-all resize-none"
+                                placeholder="What would you like to know about this document?"></textarea>
+                    </div>
+
+                    <!-- Visualization Options -->
+                    {% if chart_types %}
+                    <div class="space-y-4 rounded-lg bg-gray-900/30 p-4">
+                        <h3 class="text-lg font-medium text-white">Data Visualization</h3>
+
+                        <!-- Chart Type Selection -->
+                        <div class="space-y-2">
+                            <label class="block text-gray-300">Chart Type</label>
+                            <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                                {% for chart in chart_types %}
+                                <label class="relative cursor-pointer">
+                                    <input type="radio"
+                                           name="chart_type"
+                                           value="{{ chart|lower }}"
+                                           class="peer sr-only">
+                                    <div class="p-3 rounded-lg bg-gray-900/50 border border-purple-500/20 text-gray-300
+                                                hover:bg-gray-800/50 transition-colors text-center
+                                                peer-checked:bg-purple-600/20 peer-checked:border-purple-500
+                                                peer-checked:text-purple-400">
+                                        {{ chart|title }}
+                                    </div>
+                                </label>
+                                {% endfor %}
+                            </div>
+                        </div>
+
+                        <!-- Column Selection -->
+                        <div id="column-selection" class="space-y-4 hidden">
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div class="space-y-2">
+                                    <label class="block text-gray-300">X-Axis Column</label>
+                                    <select id="x_col"
+                                            name="x_col"
+                                            class="w-full p-3 rounded-lg bg-gray-900/50 border border-purple-500/20 text-white
+                                                   focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all">
+                                        <option value="">Select column...</option>
+                                    </select>
+                                </div>
+                                <div class="space-y-2">
+                                    <label class="block text-gray-300">Y-Axis Column</label>
+                                    <select id="y_col"
+                                            name="y_col"
+                                            class="w-full p-3 rounded-lg bg-gray-900/50 border border-purple-500/20 text-white
+                                                   focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all">
+                                        <option value="">Select column...</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <!-- Visualization Settings -->
+                            <div class="space-y-2">
+                                <label class="block text-gray-300">Chart Title</label>
+                                <input type="text"
+                                       name="chart_title"
+                                       class="w-full p-3 rounded-lg bg-gray-900/50 border border-purple-500/20 text-white
+                                              focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                                       placeholder="Enter chart title">
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <!-- Action Buttons -->
+                    <div class="flex gap-4">
+                        <button type="submit"
+                                id="analyzeButton"
+                                disabled
+                                class="flex-1 bg-purple-600 hover:bg-purple-500 text-white py-3 px-4 rounded-lg
+                                       transition-colors disabled:opacity-50 disabled:cursor-not-allowed
+                                       font-medium flex items-center justify-center space-x-2">
+                            <span>Analyze Document</span>
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                      d="M9 5l7 7-7 7"></path>
+                            </svg>
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Right Column: Results -->
+            <div class="space-y-6">
+                <!-- Analysis Results -->
+                <div id="resultsArea" class="rounded-xl bg-gray-800/50 backdrop-blur-md border border-purple-500/20 p-6 hidden">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="text-xl font-bold text-white">Analysis Results</h3>
+                        <button onclick="clearResults()"
+                                class="text-gray-400 hover:text-gray-300 transition-colors">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                      d="M6 18L18 6M6 6l12 12"></path>
+                            </svg>
+                        </button>
+                    </div>
+                    <div id="analysisResults" class="prose prose-invert max-w-none"></div>
+                </div>
+
+                <!-- Visualization Results -->
+                {% if chart_types %}
+                <div id="visualizationArea" class="rounded-xl bg-gray-800/50 backdrop-blur-md border border-purple-500/20 p-6 hidden">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="text-xl font-bold text-white">Data Visualization</h3>
+                        <div class="flex items-center space-x-2">
+                            <button onclick="downloadVisualization()"
+                                    class="p-2 rounded-lg bg-gray-900/50 hover:bg-gray-700/50 text-white/80
+                                           hover:text-white transition-colors"
+                                    title="Download visualization">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                          d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+                                </svg>
+                            </button>
+                            <button onclick="copyVisualization()"
+                                    class="p-2 rounded-lg bg-gray-900/50 hover:bg-gray-700/50 text-white/80
+                                           hover:text-white transition-colors"
+                                    title="Copy to clipboard">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                          d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+                                </svg>
+                            </button>
+                            <button onclick="toggleFullscreen()"
+                                    class="p-2 rounded-lg bg-gray-900/50 hover:bg-gray-700/50 text-white/80
+                                           hover:text-white transition-colors"
+                                    title="Toggle fullscreen">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                          d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"></path>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                    <div id="visualizationResults" class="rounded-lg bg-gray-900/50 p-4 min-h-[300px]"></div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Toast Container -->
+<div id="toastContainer" class="fixed bottom-4 right-4 z-50 space-y-2"></div>
+
+<style>
+select:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+select:not(:disabled) {
+    cursor: pointer;
+}
+
+/* Add transition for smoother enabling/disabling */
+select {
+    transition: opacity 0.2s ease-in-out;
+}
+</style>
 {% endblock %}
 
 {% block scripts %}
+{{ super() }}
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    const chartTypeSelect = document.getElementById('chart_type');
-    const columnSelection = document.getElementById('column-selection');
+// Global state
+let llamaInitialized = false;
+let currentDocument = {
+    id: '{{ document.id }}',
+    filename: '{{ document.filename }}'
+};
 
-    if (chartTypeSelect) {
-        chartTypeSelect.addEventListener('change', function() {
-            if (this.value) {
-                columnSelection.style.display = 'block';
-            } else {
-                columnSelection.style.display = 'none';
+// Initialize Llama
+async function initializeLlama() {
+    const statusElement = document.getElementById('llamaStatus');
+    const statusIndicator = document.getElementById('statusIndicator');
+    const initButton = document.getElementById('initButton');
+    const analyzeButton = document.getElementById('analyzeButton');
+
+    try {
+        showLoading('Initializing Llama...');
+        statusElement.textContent = 'Connecting...';
+        statusIndicator.style.backgroundColor = '#FCD34D'; // Yellow
+        initButton.disabled = true;
+
+        const response = await fetch('/api/initialize_llama');
+        const data = await response.json();
+
+        if (data.success) {
+            statusElement.textContent = 'Connected';
+            statusIndicator.style.backgroundColor = '#34D399'; // Green
+            initButton.style.display = 'none';
+            analyzeButton.disabled = false;
+            llamaInitialized = true;
+            showToast('Llama initialized successfully', 'success');
+        } else {
+            throw new Error(data.message || 'Failed to initialize');
+        }
+    } catch (error) {
+        console.error('Initialization error:', error);
+        statusElement.textContent = 'Connection Failed';
+        statusIndicator.style.backgroundColor = '#EF4444'; // Red
+        initButton.textContent = 'Retry Connection';
+        initButton.disabled = false;
+        analyzeButton.disabled = true;
+        llamaInitialized = false;
+        showToast('Failed to initialize Llama: ' + error.message, 'error');
+    } finally {
+        hideLoading();
+    }
+}
+
+// Handle form submission
+const analysisForm = document.getElementById('analysisForm');
+if (analysisForm) {
+    analysisForm.addEventListener('submit', async function(e) {
+        e.preventDefault();
+
+        if (!llamaInitialized) {
+            showToast('Please initialize Llama first', 'warning');
+            return;
+        }
+
+        const question = document.getElementById('question').value.trim();
+        if (!question) {
+            showToast('Please enter a question', 'warning');
+            return;
+        }
+
+        try {
+            showLoading('Analyzing document...');
+
+            // Prepare form data
+            const formData = new FormData(this);
+            formData.append('document_id', currentDocument.id);
+
+            // Add visualization data if needed
+            const chartType = document.querySelector('input[name="chart_type"]:checked')?.value;
+            if (chartType) {
+                formData.append('chart_type', chartType);
+                formData.append('x_col', document.getElementById('x_col').value);
+                formData.append('y_col', document.getElementById('y_col').value);
+                formData.append('chart_title', document.getElementById('chart_title')?.value || '');
             }
+
+            const response = await fetch('/process_document', {
+                method: 'POST',
+                body: formData
+            });
+
+            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+            const result = await response.json();
+
+            if (result.success) {
+                // Show analysis results
+                showAnalysisResults(result.answer);
+
+                // Show visualization if available
+                if (result.visualization) {
+                    showVisualization(result.visualization);
+                }
+
+                showToast('Analysis completed successfully', 'success');
+            } else {
+                throw new Error(result.error || 'Analysis failed');
+            }
+        } catch (error) {
+            console.error('Analysis error:', error);
+            showErrorResults(error.message);
+            showToast('Analysis failed: ' + error.message, 'error');
+        } finally {
+            hideLoading();
+        }
+    });
+}
+
+// Chart type selection handling
+document.querySelectorAll('input[name="chart_type"]').forEach(radio => {
+    radio.addEventListener('change', async function() {
+        const columnSelection = document.getElementById('column-selection');
+        if (this.checked) {
+            columnSelection.classList.remove('hidden');
+            await updateColumnOptions();
+        } else {
+            columnSelection.classList.add('hidden');
+        }
+    });
+});
+
+// Update column options for visualization
+async function updateColumnOptions() {
+    try {
+        showLoading('Loading columns...');
+
+        const response = await fetch(`/api/get_columns/${currentDocument.id}`);
+        const data = await response.json();
+
+        if (data.success) {
+            const xCol = document.getElementById('x_col');
+            const yCol = document.getElementById('y_col');
+
+            if (xCol && yCol && data.columns) {
+                // Create column options
+                const options = data.columns.map(column =>
+                    `<option value="${column}">${column}</option>`
+                ).join('');
+
+                xCol.innerHTML = `<option value="">Select X-Axis Column</option>${options}`;
+                yCol.innerHTML = `<option value="">Select Y-Axis Column</option>${options}`;
+
+                // Store column types for later use
+                window.columnTypes = data.column_types;
+            }
+        } else {
+            throw new Error(data.error || 'Failed to load columns');
+        }
+    } catch (error) {
+        console.error('Error loading columns:', error);
+        showToast('Failed to load columns: ' + error.message, 'error');
+    } finally {
+        hideLoading();
+    }
+}
+
+// Show analysis results
+function showAnalysisResults(answer) {
+    const resultsArea = document.getElementById('resultsArea');
+    const analysisResults = document.getElementById('analysisResults');
+
+    if (resultsArea && analysisResults) {
+        resultsArea.classList.remove('hidden');
+        analysisResults.innerHTML = marked(answer); // Using marked.js for markdown
+    }
+}
+
+// Show visualization results
+function showVisualization(visualization) {
+    const visualizationArea = document.getElementById('visualizationArea');
+    const visualizationResults = document.getElementById('visualizationResults');
+
+    if (visualizationArea && visualizationResults) {
+        visualizationArea.classList.remove('hidden');
+        visualizationResults.innerHTML = visualization;
+    }
+}
+
+// Show error results
+function showErrorResults(error) {
+    const resultsArea = document.getElementById('resultsArea');
+    const analysisResults = document.getElementById('analysisResults');
+
+    if (resultsArea && analysisResults) {
+        resultsArea.classList.remove('hidden');
+        analysisResults.innerHTML = `
+            <div class="text-red-500 bg-red-500/10 p-4 rounded-lg">
+                <h4 class="font-medium mb-2">Error</h4>
+                <p>${error}</p>
+            </div>
+        `;
+    }
+}
+
+// Clear results
+function clearResults() {
+    const resultsArea = document.getElementById('resultsArea');
+    const analysisResults = document.getElementById('analysisResults');
+    const visualizationArea = document.getElementById('visualizationArea');
+
+    if (resultsArea && analysisResults) {
+        resultsArea.classList.add('hidden');
+        analysisResults.innerHTML = '';
+    }
+
+    if (visualizationArea) {
+        visualizationArea.classList.add('hidden');
+    }
+}
+
+// Visualization Export Functions
+function downloadVisualization() {
+    const visualizationContent = document.getElementById('visualizationResults');
+    if (!visualizationContent) return;
+
+    try {
+        html2canvas(visualizationContent).then(canvas => {
+            const link = document.createElement('a');
+            link.download = `visualization-${currentDocument.filename}.png`;
+            link.href = canvas.toDataURL('image/png');
+            link.click();
+        });
+    } catch (error) {
+        showToast('Failed to download visualization', 'error');
+        console.error('Download error:', error);
+    }
+}
+
+async function copyVisualization() {
+    const visualizationContent = document.getElementById('visualizationResults');
+    if (!visualizationContent) return;
+
+    try {
+        const canvas = await html2canvas(visualizationContent);
+        canvas.toBlob(async blob => {
+            try {
+                await navigator.clipboard.write([
+                    new ClipboardItem({ 'image/png': blob })
+                ]);
+                showToast('Visualization copied to clipboard', 'success');
+            } catch (error) {
+                throw error;
+            }
+        });
+    } catch (error) {
+        showToast('Failed to copy visualization', 'error');
+        console.error('Copy error:', error);
+    }
+}
+
+function toggleFullscreen() {
+    const visualizationArea = document.getElementById('visualizationArea');
+    if (!visualizationArea) return;
+
+    try {
+        if (!document.fullscreenElement) {
+            visualizationArea.requestFullscreen();
+        } else {
+            document.exitFullscreen();
+        }
+    } catch (error) {
+        showToast('Fullscreen mode not supported', 'error');
+        console.error('Fullscreen error:', error);
+    }
+}
+
+// Utility Functions
+function showLoading(message = 'Processing...') {
+    const overlay = document.getElementById('loadingOverlay');
+    const messageEl = document.getElementById('loadingMessage');
+
+    if (overlay && messageEl) {
+        messageEl.textContent = message;
+        overlay.classList.remove('hidden');
+        overlay.classList.add('flex');
+    }
+}
+
+function hideLoading() {
+    const overlay = document.getElementById('loadingOverlay');
+    if (overlay) {
+        overlay.classList.add('hidden');
+        overlay.classList.remove('flex');
+    }
+}
+
+function showToast(message, type = 'info') {
+    const toast = document.createElement('div');
+    toast.className = `rounded-lg p-4 mb-4 text-white transform transition-all duration-300 ease-in-out ${
+        type === 'error' ? 'bg-red-500' :
+        type === 'success' ? 'bg-green-500' :
+        type === 'warning' ? 'bg-yellow-500' :
+        'bg-blue-500'
+    }`;
+
+    toast.textContent = message;
+
+    const container = document.getElementById('toastContainer');
+    if (container) {
+        container.appendChild(toast);
+
+        // Animate in
+        requestAnimationFrame(() => {
+            toast.classList.add('translate-y-0', 'opacity-100');
+        });
+
+        setTimeout(() => {
+            // Animate out
+            toast.classList.add('translate-y-full', 'opacity-0');
+            setTimeout(() => {
+                toast.remove();
+            }, 300);
+        }, 3000);
+    }
+}
+
+// Initialize on page load
+document.addEventListener('DOMContentLoaded', async function() {
+    try {
+        // Check Llama status
+        const response = await fetch('/api/llama/status');
+        const data = await response.json();
+
+        if (data.initialized) {
+            llamaInitialized = true;
+            document.getElementById('statusIndicator').style.backgroundColor = '#34D399';
+            document.getElementById('llamaStatus').textContent = 'Connected';
+            document.getElementById('initButton').style.display = 'none';
+            document.getElementById('analyzeButton').disabled = false;
+        }
+    } catch (error) {
+        console.error('Error checking Llama status:', error);
+    }
+
+    // Setup textarea auto-resize
+    const questionTextarea = document.getElementById('question');
+    if (questionTextarea) {
+        questionTextarea.addEventListener('input', function() {
+            this.style.height = 'auto';
+            this.style.height = (this.scrollHeight) + 'px';
         });
     }
 });

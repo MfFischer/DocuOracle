@@ -3,186 +3,422 @@
 {% block title %}Upload Document - DocuOracle{% endblock %}
 
 {% block content %}
-<div class="max-w-4xl mx-auto">
-    <!-- Upload Section -->
-    <div class="bg-dark-secondary rounded-lg shadow-lg p-6 mb-8">
-        <h1 class="text-2xl font-bold text-accent mb-6">Upload Document</h1>
+<!-- Background with darker gradient -->
+<div class="fixed inset-0 bg-gradient-to-br from-gray-900 via-purple-900 to-gray-900"></div>
 
-        <form method="POST" enctype="multipart/form-data" class="space-y-6">
-            <!-- File Upload -->
-            <div class="space-y-2">
-                <label for="file" class="block text-light font-medium">Select Document</label>
-                <input type="file"
-                       name="file"
-                       id="file"
-                       accept=".pdf,.docx,.xlsx,.xls,.csv"
-                       class="w-full p-3 bg-dark-primary rounded-lg text-light
-                              file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0
-                              file:bg-accent file:text-dark-primary file:font-semibold
-                              hover:file:bg-light file:transition-colors">
-            </div>
-
-            <!-- Question Input -->
-            <div class="space-y-2">
-                <label for="question" class="block text-light font-medium">Ask a Question (Optional)</label>
-                <textarea name="question"
-                         id="question"
-                         rows="3"
-                         class="w-full p-3 bg-white rounded-lg text-dark-primary placeholder-gray-500 resize-y
-                                focus:ring-2 focus:ring-accent transition-all"
-                         placeholder="What would you like to know about the document?"></textarea>
-            </div>
-
-            <!-- Chart Options -->
-            {% if chart_types %}
-            <div class="space-y-2">
-                <label for="chart_type" class="block text-light font-medium">Visualization Type (Optional)</label>
-                <select name="chart_type"
-                        id="chart_type"
-                        class="w-full p-3 bg-white rounded-lg text-dark-primary
-                               focus:ring-2 focus:ring-accent transition-all">
-                    <option value="">Select visualization type...</option>
-                    {% for chart in chart_types %}
-                    <option value="{{ chart }}">{{ chart|title }}</option>
-                    {% endfor %}
-                </select>
-            </div>
-
-            <!-- Column Selection -->
-            <div id="column-selection" class="space-y-4 hidden">
-                <div class="grid grid-cols-2 gap-4">
-                    <div class="space-y-2">
-                        <label for="x_col" class="block text-light font-medium">X-Axis Column</label>
-                        <select name="x_col"
-                                id="x_col"
-                                class="w-full p-3 bg-white rounded-lg text-dark-primary
-                                       focus:ring-2 focus:ring-accent transition-all">
-                        </select>
-                    </div>
-                    <div class="space-y-2">
-                        <label for="y_col" class="block text-light font-medium">Y-Axis Column</label>
-                        <select name="y_col"
-                                id="y_col"
-                                class="w-full p-3 bg-white rounded-lg text-dark-primary
-                                       focus:ring-2 focus:ring-accent transition-all">
-                        </select>
-                    </div>
+<div class="relative min-h-screen">
+    <!-- Header Bar - Always visible -->
+    <header class="sticky top-0 z-50 backdrop-blur-md bg-gray-900/80 border-b border-purple-500/20">
+        <div class="container mx-auto px-4 py-4">
+            <div class="flex justify-between items-center">
+                <div class="flex items-center space-x-8">
+                    <!-- Logo -->
+                    <h1 class="text-2xl font-bold bg-gradient-to-r from-purple-400 to-blue-400 bg-clip-text text-transparent">
+                        DocuOracle
+                    </h1>
+                    <!-- Navigation -->
+                    <nav class="hidden md:flex space-x-6">
+                        <a href="{{ url_for('routes.home') }}" class="text-white/80 hover:text-white transition-colors">Dashboard</a>
+                        <a href="#" class="text-white/80 hover:text-white transition-colors">Upload</a>
+                    </nav>
                 </div>
-            </div>
-            {% endif %}
 
-            <!-- Action Buttons -->
-            <div class="flex gap-4">
-                <button type="submit"
-                        name="action"
-                        value="ask"
-                        class="flex-1 bg-accent text-dark-primary hover:bg-blue-400 font-semibold
-                               py-3 px-6 rounded-lg shadow-md hover:shadow-lg transition-all">
-                    Ask Question
-                </button>
-                <button type="submit"
-                        name="action"
-                        value="analyze"
-                        class="flex-1 bg-green-500 text-white hover:bg-green-400 font-semibold
-                               py-3 px-6 rounded-lg shadow-md hover:shadow-lg transition-all">
-                    Analyze Data
-                </button>
-            </div>
-        </form>
-    </div>
-
-    <!-- Results Section -->
-    {% if answer or graph %}
-    <div class="bg-dark-secondary rounded-lg shadow-lg p-6">
-        <h2 class="text-2xl font-bold text-accent mb-6">Results</h2>
-
-        {% if answer %}
-        <div class="mb-8">
-            <h3 class="text-xl font-semibold text-light mb-4">Document Analysis</h3>
-            <div class="bg-dark-primary p-4 rounded-lg">
-                <p class="text-light whitespace-pre-wrap">{{ answer }}</p>
-            </div>
-        </div>
-        {% endif %}
-
-        {% if graph %}
-        <div>
-            <h3 class="text-xl font-semibold text-light mb-4">Data Visualization</h3>
-            <div class="bg-dark-primary p-4 rounded-lg">
-                {{ graph|safe }}
-            </div>
-        </div>
-        {% endif %}
-    </div>
-    {% endif %}
-
-    <!-- File List Section -->
-    {% if documents %}
-    <div class="mt-8 bg-dark-secondary rounded-lg shadow-lg p-6">
-        <h2 class="text-2xl font-bold text-accent mb-6">Your Documents</h2>
-        <div class="grid gap-4">
-            {% for doc in documents %}
-            <div class="bg-dark-primary rounded-lg p-4 flex items-center justify-between">
-                <div class="flex items-center space-x-4">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                <!-- Right Side Controls -->
+                <button onclick="toggleTheme()" class="p-2 rounded-lg bg-gray-800/50 hover:bg-gray-700/50 text-white/80 hover:text-white transition-colors">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path>
                     </svg>
-                    <span class="text-light font-medium">{{ doc.filename }}</span>
-                </div>
-                <div class="flex items-center space-x-3">
-                    <a href="{{ url_for('routes.view_document', doc_id=doc.id) }}"
-                       class="bg-accent text-dark-primary hover:bg-blue-400 px-4 py-2 rounded-lg
-                              transition-colors text-sm font-medium">
-                        View
-                    </a>
-                    <form action="{{ url_for('routes.delete_document', doc_id=doc.id) }}"
-                          method="POST"
-                          class="inline"
-                          onsubmit="return confirm('Are you sure you want to delete this document?');">
-                        <button type="submit"
-                                class="bg-red-500 text-white hover:bg-red-400 px-4 py-2 rounded-lg
-                                       transition-colors text-sm font-medium">
-                            Delete
-                        </button>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <div class="container mx-auto px-4 py-6">
+        <!-- Page Title -->
+        <div class="mb-8">
+            <h2 class="text-3xl font-bold text-white">Upload Document</h2>
+            <p class="text-gray-400 mt-2">Upload your documents for analysis and visualization</p>
+        </div>
+
+        <!-- Upload Form Card -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            <div class="lg:col-span-8 space-y-6">
+                <div class="rounded-xl bg-gray-800/50 backdrop-blur-md border border-purple-500/20 p-6">
+                    <form method="POST" enctype="multipart/form-data" class="space-y-6">
+                        <!-- File Upload -->
+                        <div class="space-y-3">
+                            <label class="block text-gray-300 font-medium">Select Document</label>
+                            <div class="relative">
+                                <input type="file"
+                                       name="file"
+                                       id="file"
+                                       accept=".pdf,.docx,.xlsx,.xls,.csv"
+                                       class="w-full p-4 rounded-lg bg-gray-900/50 border border-purple-500/20 text-gray-300
+                                              file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0
+                                              file:bg-purple-600 file:text-white file:font-medium
+                                              hover:file:bg-purple-500 file:transition-colors
+                                              focus:ring-2 focus:ring-purple-500 focus:border-transparent">
+                            </div>
+                            <p class="text-sm text-gray-500">Supported formats: PDF, DOCX, XLSX, XLS, CSV</p>
+                        </div>
+
+                        <!-- Question Input -->
+                        <div class="space-y-3">
+                            <label for="question" class="block text-gray-300 font-medium">Ask a Question (Optional)</label>
+                            <textarea name="question"
+                                     id="question"
+                                     rows="4"
+                                     class="w-full p-4 rounded-lg bg-gray-900/50 border border-purple-500/20 text-white placeholder-gray-500
+                                            focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all resize-none"
+                                     placeholder="What would you like to know about the document?"></textarea>
+                        </div>
+
+                        <!-- Chart Options -->
+                        {% if chart_types %}
+                        <div class="space-y-6">
+                            <div class="space-y-3">
+                                <label for="chart_type" class="block text-gray-300 font-medium">Visualization Type (Optional)</label>
+                                <select name="chart_type"
+                                        id="chart_type"
+                                        class="w-full p-4 rounded-lg bg-gray-900/50 border border-purple-500/20 text-white
+                                               focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all">
+                                    <option value="">Select visualization type...</option>
+                                    {% for chart in chart_types %}
+                                    <option value="{{ chart }}">{{ chart|title }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+
+                            <!-- Column Selection -->
+                            <div id="column-selection" class="space-y-4 hidden">
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div class="space-y-3">
+                                        <label for="x_col" class="block text-gray-300 font-medium">X-Axis Column</label>
+                                        <select name="x_col"
+                                                id="x_col"
+                                                class="w-full p-4 rounded-lg bg-gray-900/50 border border-purple-500/20 text-white
+                                                       focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all">
+                                        </select>
+                                    </div>
+                                    <div class="space-y-3">
+                                        <label for="y_col" class="block text-gray-300 font-medium">Y-Axis Column</label>
+                                        <select name="y_col"
+                                                id="y_col"
+                                                class="w-full p-4 rounded-lg bg-gray-900/50 border border-purple-500/20 text-white
+                                                       focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all">
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+
+                        <!-- Action Buttons -->
+                        <div class="flex gap-4 pt-4">
+                            <button type="submit"
+                                    name="action"
+                                    value="ask"
+                                    class="flex-1 bg-purple-600 hover:bg-purple-500 text-white font-medium
+                                           py-4 px-6 rounded-lg transition-colors flex items-center justify-center space-x-2">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
+                                <span>Ask Question</span>
+                            </button>
+                            <button type="submit"
+                                    name="action"
+                                    value="analyze"
+                                    class="flex-1 bg-blue-600 hover:bg-blue-500 text-white font-medium
+                                           py-4 px-6 rounded-lg transition-colors flex items-center justify-center space-x-2">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                                </svg>
+                                <span>Analyze Data</span>
+                            </button>
+                        </div>
                     </form>
                 </div>
+
+                <!-- Results Section -->
+                {% if answer or graph %}
+                <div class="rounded-xl bg-gray-800/50 backdrop-blur-md border border-purple-500/20 p-6">
+                    <h3 class="text-xl font-bold text-white mb-6">Results</h3>
+
+                    {% if answer %}
+                    <div class="mb-6">
+                        <h4 class="text-lg font-medium text-gray-300 mb-4">Document Analysis</h4>
+                        <div class="rounded-lg bg-gray-900/50 p-4">
+                            <p class="text-gray-300 whitespace-pre-wrap">{{ answer }}</p>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    {% if graph %}
+                    <div>
+                        <h4 class="text-lg font-medium text-gray-300 mb-4">Data Visualization</h4>
+                        <div class="rounded-lg bg-gray-900/50 p-4">
+                            {{ graph|safe }}
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+                {% endif %}
             </div>
-            {% endfor %}
+
+            <!-- Recent Documents Sidebar -->
+            <div class="lg:col-span-4 space-y-6">
+                {% if documents %}
+                <div class="rounded-xl bg-gray-800/50 backdrop-blur-md border border-purple-500/20 p-6">
+                    <h3 class="text-xl font-bold text-white mb-4">Recent Documents</h3>
+                    <div class="space-y-3">
+                        {% for doc in documents %}
+                        <div class="group rounded-lg bg-gray-900/50 p-4 hover:bg-gray-700/50 transition-colors">
+                            <div class="flex items-start justify-between">
+                                <div class="flex-1">
+                                    <h4 class="text-gray-300 font-medium truncate">{{ doc.filename }}</h4>
+                                    <p class="text-gray-500 text-sm mt-1">{{ doc.created_at.strftime('%Y-%m-%d') }}</p>
+                                </div>
+                                <div class="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <a href="{{ url_for('routes.view_document', doc_id=doc.id) }}"
+                                       class="p-1.5 rounded-lg hover:bg-gray-600/50 text-purple-400 hover:text-purple-300 transition-colors">
+                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                                        </svg>
+                                    </a>
+                                    <form method="POST"
+                                          action="{{ url_for('routes.delete_document', doc_id=doc.id) }}"
+                                          class="inline"
+                                          onsubmit="return confirm('Are you sure you want to delete this document?');">
+                                        <button type="submit"
+                                                class="p-1.5 rounded-lg hover:bg-gray-600/50 text-red-400 hover:text-red-300 transition-colors">
+                                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                                            </svg>
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+            </div>
         </div>
     </div>
-    {% endif %}
 </div>
-{% endblock %}
+
+<!-- Toast Container -->
+<div id="toastContainer" class="fixed bottom-4 right-4 z-50 space-y-2"></div>
 
 {% block scripts %}
 <script>
+// Wait for DOM to be fully loaded
 document.addEventListener('DOMContentLoaded', function() {
+    // Get DOM elements
     const fileInput = document.getElementById('file');
     const chartTypeSelect = document.getElementById('chart_type');
     const columnSelection = document.getElementById('column-selection');
     const xColSelect = document.getElementById('x_col');
     const yColSelect = document.getElementById('y_col');
 
+    // Theme management
+    let isDarkMode = localStorage.getItem('darkMode') === 'true';
+
+    // Theme Toggle Function
+    window.toggleTheme = function() {
+        isDarkMode = !isDarkMode;
+        localStorage.setItem('darkMode', isDarkMode);
+        document.documentElement.classList.toggle('dark');
+        showToast(isDarkMode ? 'Dark mode enabled' : 'Light mode enabled');
+    };
+
+    // File Input Handler
     if (fileInput && chartTypeSelect) {
-        fileInput.addEventListener('change', function() {
+        fileInput.addEventListener('change', async function() {
             const file = this.files[0];
-            if (file && (file.name.endsWith('.csv') || file.name.endsWith('.xlsx') || file.name.endsWith('.xls'))) {
-                chartTypeSelect.parentElement.style.display = 'block';
-            } else {
-                chartTypeSelect.parentElement.style.display = 'none';
-                columnSelection.style.display = 'none';
+            if (file) {
+                showToast('Selected file: ' + file.name, 'info');
+
+                if (file.name.endsWith('.csv') || file.name.endsWith('.xlsx') || file.name.endsWith('.xls')) {
+                    chartTypeSelect.parentElement.parentElement.classList.remove('hidden');
+                    try {
+                        const formData = new FormData();
+                        formData.append('file', file);
+
+                        const response = await fetch('/api/get_columns', {
+                            method: 'POST',
+                            body: formData
+                        });
+
+                        if (!response.ok) {
+                            throw new Error('Failed to read file columns');
+                        }
+
+                        const columns = await response.json();
+                        populateColumnSelects(columns);
+                    } catch (error) {
+                        console.error('Error reading columns:', error);
+                        showToast('Error reading file columns', 'error');
+                    }
+                } else {
+                    chartTypeSelect.parentElement.parentElement.classList.add('hidden');
+                    columnSelection.classList.add('hidden');
+                }
             }
         });
+    }
 
+    // Chart Type Selection Handler
+    if (chartTypeSelect) {
         chartTypeSelect.addEventListener('change', function() {
             if (this.value) {
-                columnSelection.style.display = 'block';
-            // Here you would typically make an AJAX call to get columns
-            // For now, we'll just show the inputs
-        } else {
-            columnSelection.style.display = 'none';
+                columnSelection.classList.remove('hidden');
+                showToast('Selected chart type: ' + this.value, 'info');
+            } else {
+                columnSelection.classList.add('hidden');
+            }
+        });
+    }
+
+    // Populate Column Selection Dropdowns
+    function populateColumnSelects(columns) {
+        if (xColSelect && yColSelect) {
+            const options = columns.map(function(col) {
+                return '<option value="' + col + '">' + col + '</option>';
+            }).join('');
+
+            xColSelect.innerHTML = '<option value="">Select X-Axis Column...</option>' + options;
+            yColSelect.innerHTML = '<option value="">Select Y-Axis Column...</option>' + options;
         }
-    });
+    }
+
+    // Form Submission Handler
+    const uploadForm = document.querySelector('form');
+    if (uploadForm) {
+        uploadForm.addEventListener('submit', function(e) {
+            const fileInput = this.querySelector('input[type="file"]');
+            if (!fileInput.files.length) {
+                e.preventDefault();
+                showToast('Please select a file to upload', 'error');
+                return;
+            }
+
+            // Show loading state
+            const submitButtons = this.querySelectorAll('button[type="submit"]');
+            submitButtons.forEach(function(button) {
+                button.disabled = true;
+                button.innerHTML =
+                    '<svg class="animate-spin h-5 w-5 mr-2" viewBox="0 0 24 24">' +
+                    '<circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>' +
+                    '<path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>' +
+                    '</svg>' +
+                    'Processing...';
+            });
+        });
+    }
+
+    // Toast Notification System
+    function showToast(message, type) {
+        type = type || 'info';
+        const container = document.getElementById('toastContainer');
+        if (!container) return;
+
+        const toast = document.createElement('div');
+        const bgColor = type === 'success' ? 'bg-green-500/80' :
+                       type === 'error' ? 'bg-red-500/80' :
+                       'bg-blue-500/80';
+
+        toast.className = 'transform transition-all duration-300 ease-out translate-y-2 opacity-0 flex items-center p-4 rounded-lg shadow-lg backdrop-blur-md ' + bgColor;
+
+        const icon = type === 'success' ? '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>' :
+                    type === 'error' ? '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>' :
+                    '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>';
+
+        toast.innerHTML =
+            '<div class="flex items-center space-x-2">' +
+            '<svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">' +
+            icon +
+            '</svg>' +
+            '<span class="text-white">' + message + '</span>' +
+            '</div>';
+
+        container.appendChild(toast);
+
+        // Animate in
+        requestAnimationFrame(function() {
+            toast.classList.remove('translate-y-2', 'opacity-0');
+        });
+
+        // Remove after delay
+        setTimeout(function() {
+            toast.classList.add('translate-y-2', 'opacity-0');
+            setTimeout(function() {
+                toast.remove();
+            }, 300);
+        }, 3000);
+    }
+
+    // Auto-resize textarea
+    const textarea = document.getElementById('question');
+    if (textarea) {
+        textarea.addEventListener('input', function() {
+            this.style.height = 'auto';
+            this.style.height = this.scrollHeight + 'px';
+        });
+    }
+
+    // Initialize theme
+    if (isDarkMode) {
+        document.documentElement.classList.add('dark');
+    }
 });
 </script>
+
+<style>
+/* Custom Scrollbar */
+.custom-scrollbar::-webkit-scrollbar {
+    width: 4px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 2px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 2px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.3);
+}
+
+/* Animations */
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade-in {
+    animation: fadeIn 0.3s ease-out;
+}
+
+/* File Input Styling */
+input[type="file"]::file-selector-button {
+    cursor: pointer;
+}
+
+/* Mobile Optimizations */
+@media (max-width: 768px) {
+    .container {
+        padding-left: 1rem;
+        padding-right: 1rem;
+    }
+}
+</style>
+{% endblock %}
 {% endblock %}
