@@ -3,6 +3,11 @@
 {% block title %}Home - DocuOracle{% endblock %}
 
 {% block content %}
+{% if not current_user.is_authenticated %}
+    <script>
+        window.location.href = "{{ url_for('routes.login') }}";
+    </script>
+{% else %}
 <div class="min-h-screen bg-gray-900">
     <!-- Header Section -->
     <div class="px-6 py-4">
@@ -191,6 +196,7 @@
         <span class="text-white text-lg" id="loadingMessage">Processing...</span>
     </div>
 </div>
+{% endif %}
 {% endblock %}
 
 {% block scripts %}
@@ -358,12 +364,15 @@ function initializeModelConnection() {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
+                    'X-CSRFToken': document.querySelector('input[name="csrf_token"]').value
                 },
+                body: JSON.stringify({
+                    use_rag: false  // or true if you want to use RAG
+                }),
                 credentials: 'same-origin'
             });
 
             console.log("Got response:", response.status);
-
             const data = await response.json();
             console.log("Response data:", data);
 

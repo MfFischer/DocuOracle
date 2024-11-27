@@ -23,6 +23,9 @@ from docuoracle_app.graph_handler import (
 )
 from itsdangerous import URLSafeTimedSerializer
 from flask_wtf.csrf import CSRFError
+from flask_wtf import FlaskForm
+from wtforms import StringField, PasswordField, BooleanField
+from wtforms.validators import DataRequired
 
 # Create Blueprint
 routes_blueprint = Blueprint('routes', __name__)
@@ -35,6 +38,12 @@ logger = logging.getLogger(__name__)
 # Global variables for model management
 language_model = None
 _model_initialized = False
+
+
+class LoginForm(FlaskForm):
+    username = StringField('Username', validators=[DataRequired()])
+    password = PasswordField('Password', validators=[DataRequired()])
+    remember = BooleanField('Remember Me')
 
 
 def get_model_initialization_status():
@@ -126,10 +135,11 @@ def home():
 @routes_blueprint.route('/login', methods=['GET', 'POST'])
 def login():
     """User login route."""
-    if request.method == 'POST':
+    form = LoginForm()
+    if form.validate_on_submit():
         try:
-            username = request.form.get('username')
-            password = request.form.get('password')
+            username = form.username.data
+            password = form.password.data
 
             user = User.query.filter_by(username=username).first()
 
@@ -137,10 +147,7 @@ def login():
                 login_user(user)
                 flash('Welcome back!', 'success')
 
-                # Get the next page from query parameters
                 next_page = request.args.get('next')
-
-                # Validate the next page URL
                 if not next_page or urlsplit(next_page).netloc != '':
                     next_page = url_for('routes.home')
 
@@ -151,7 +158,7 @@ def login():
         except Exception as e:
             flash(f'Login error: {str(e)}', 'error')
 
-    return render_template('login.html')
+    return render_template('login.html', form=form)
 
 
 @routes_blueprint.route('/register', methods=['GET', 'POST'])
@@ -187,14 +194,18 @@ def register():
     return render_template('register.html')
 
 
-@routes_blueprint.route('/logout')
+@routes_blueprint.route('/logout', methods=['GET', 'POST'])
 @login_required
 def logout():
     """User logout route."""
-    logout_user()
-    flash('Logged out successfully.', 'success')
-    return redirect(url_for('routes.home'))
+    if current_user.is_authenticated:
+        logout_user()
+        flash('Logged out successfully.', 'success')
+    else:
+        flash('Your session has expired. Please login again.', 'info')
 
+    session.clear()
+    return redirect(url_for('routes.login'))
 
 @routes_blueprint.route('/profile')
 @login_required
@@ -451,17 +462,17 @@ def process_uploaded_document(document, form_data):
 def initialize_model_endpoint():
     """Initialize the language model with RAG support."""
     try:
-        global _model_initialized
+        # Add CSRF token handling
+        csrf_token = request.form.get('csrf_token') or request.headers.get('X-CSRFToken')
 
         # Get initialization type from request
-        data = request.get_json()
-        use_rag = data.get('use_rag', False)
+        use_rag = request.json.get('use_rag', False) if request.is_json else False
 
         if use_rag:
             # Initialize with RAG
             requirements = {
-                'deployment': data.get('deployment', 'production'),
-                'resources': data.get('resources', 'limited')
+                'deployment': 'production',
+                'resources': 'limited'
             }
             success, message = initialize_rag(requirements)
         else:
@@ -469,16 +480,12 @@ def initialize_model_endpoint():
             success, message = initialize_llama()
 
         if success:
-            _model_initialized = True
-            logger.info("Model initialized successfully")
             return jsonify({
                 'success': True,
                 'message': message,
-                'status': get_model_initialization_status(),
-                'mode': 'rag' if use_rag else 'traditional'
+                'status': get_model_initialization_status()
             })
         else:
-            logger.error(f"Model initialization failed: {message}")
             return jsonify({
                 'success': False,
                 'error': message,
@@ -486,13 +493,12 @@ def initialize_model_endpoint():
             })
 
     except Exception as e:
-        logger.exception("Error during model initialization")
+        logger.error(f"Model initialization error: {str(e)}")
         return jsonify({
             'success': False,
             'error': str(e),
             'status': get_model_initialization_status()
         })
-
 
 @routes_blueprint.route('/api/llama/status', methods=['GET'])
 @login_required
@@ -514,6 +520,35 @@ def get_llama_status_endpoint():
             'status': 'Error'
         })
 
+@routes_blueprint.route('/api/upload_document', methods=['POST'])
+@login_required
+def upload_document():
+    """Handle document upload."""
+    if 'file' not in request.files:
+        return jsonify({'success': False, 'error': 'No file part'})
+
+    file = request.files['file']
+    if file.filename == '':
+        return jsonify({'success': False, 'error': 'No selected file'})
+
+    if file and allowed_file(file.filename):
+        try:
+            success, doc, error = save_uploaded_file(file, current_user.id)
+            if success:
+                return jsonify({
+                    'success': True,
+                    'message': 'File uploaded successfully',
+                    'document': {
+                        'id': doc.id,
+                        'filename': doc.filename
+                    }
+                })
+            else:
+                return jsonify({'success': False, 'error': error})
+        except Exception as e:
+            return jsonify({'success': False, 'error': str(e)})
+    else:
+        return jsonify({'success': False, 'error': 'File type not allowed'})
 
 @routes_blueprint.route('/api/generate_visualization', methods=['POST'])
 @login_required

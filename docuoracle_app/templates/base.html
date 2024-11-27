@@ -172,40 +172,26 @@
 
         // File upload with CSRF
         async function uploadFile(url, file, onProgress) {
-            return new Promise((resolve, reject) => {
-                const formData = new FormData();
-                formData.append('file', file);
-                formData.append('csrf_token', window.csrfToken);
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('csrf_token', document.querySelector('input[name="csrf_token"]').value);
 
-                const xhr = new XMLHttpRequest();
-
-                xhr.upload.addEventListener('progress', (e) => {
-                    if (e.lengthComputable && onProgress) {
-                        const percentComplete = (e.loaded / e.total) * 100;
-                        onProgress(percentComplete);
-                    }
+            try {
+                const response = await fetch('/api/upload_document', {
+                    method: 'POST',
+                    body: formData,
+                    credentials: 'same-origin'
                 });
 
-                xhr.addEventListener('load', () => {
-                    if (xhr.status === 200) {
-                        try {
-                            const response = JSON.parse(xhr.responseText);
-                            resolve(response);
-                        } catch (error) {
-                            reject(new Error('Invalid response format'));
-                        }
-                    } else {
-                        reject(new Error(`Upload failed: ${xhr.statusText}`));
-                    }
-                });
-
-                xhr.addEventListener('error', () => reject(new Error('Upload failed')));
-                xhr.addEventListener('abort', () => reject(new Error('Upload aborted')));
-
-                xhr.open('POST', url);
-                xhr.setRequestHeader('X-CSRFToken', window.csrfToken);
-                xhr.send(formData);
-            });
+                const data = await response.json();
+                if (!response.ok) {
+                    throw new Error(data.error || 'Upload failed');
+                }
+                return data;
+            } catch (error) {
+                console.error('Upload error:', error);
+                throw error;
+            }
         }
 
         // Toast notification function
@@ -309,12 +295,12 @@
                                     Settings
                                 </a>
                                 <div class="border-t border-accent/20 my-1"></div>
-                                <form method="POST" action="{{ url_for('routes.logout') }}">
+                                <form action="{{ url_for('routes.logout', _method='POST') }}" method="GET">
                                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                    <button type="submit"
-                                            class="block w-full text-left px-4 py-2 text-sm text-red-400 hover:bg-accent/20 transition-colors">
+                                    <a href="{{ url_for('routes.logout') }}" onclick="this.closest('form').submit(); return false;"
+                                       class="block w-full text-left px-4 py-2 text-sm text-red-400 hover:bg-accent/20 transition-colors">
                                         Logout
-                                    </button>
+                                    </a>
                                 </form>
                             </div>
                         </div>

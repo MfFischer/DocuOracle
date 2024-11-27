@@ -1,9 +1,9 @@
-from flask import Flask, render_template
+from flask import Flask, render_template, request, redirect, url_for, session, flash
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
-from flask_login import LoginManager
+from flask_login import LoginManager, current_user
 import os
-from datetime import datetime
+from datetime import datetime, timedelta
 from dotenv import load_dotenv
 import logging
 from flask_wtf.csrf import CSRFProtect
@@ -94,9 +94,6 @@ def create_app():
                 static_folder=static_dir,
                 static_url_path='/static')
 
-    # Initialize CSRF protection
-    csrf.init_app(app)
-
     # Configure database with Windows-friendly path
     db_path = os.path.join(appdata_dir, 'docuoracle.db')
 
@@ -110,6 +107,12 @@ def create_app():
         SQLALCHEMY_DATABASE_URI=db_uri,
         SQLALCHEMY_TRACK_MODIFICATIONS=False,
         UPLOAD_FOLDER=upload_dir,
+
+        # Session Configuration
+        PERMANENT_SESSION_LIFETIME=timedelta(minutes=30),  # 30 minutes session lifetime
+        SESSION_COOKIE_SECURE=True,
+        SESSION_COOKIE_HTTPONLY=True,
+        SESSION_COOKIE_SAMESITE='Lax',
 
         # Model Configuration
         HF_TOKEN=os.getenv('HF_TOKEN'),
@@ -138,6 +141,23 @@ def create_app():
         WTF_CSRF_SECRET_KEY=os.getenv('CSRF_SECRET_KEY', 'your-csrf-secret-key')
     )
 
+    # Session handler
+    @app.before_request
+    def before_request():
+        if current_user.is_authenticated:
+            session.permanent = True
+            app.permanent_session_lifetime = timedelta(minutes=30)
+            session.modified = True
+
+        # Check if session is expired for protected routes
+        if not request.is_json:  # Skip for API requests
+            if not current_user.is_authenticated and \
+                    request.endpoint and \
+                    request.endpoint not in ['routes.login', 'routes.register', 'static'] and \
+                    not request.path.startswith('/static/'):
+                flash('Your session has expired. Please login again.', 'info')
+                return redirect(url_for('routes.login'))
+
     # Configure logging
     log_level = os.getenv('LOG_LEVEL', 'INFO')
     logging.basicConfig(
@@ -162,6 +182,10 @@ def create_app():
     login_manager.login_view = 'routes.login'
     login_manager.login_message = 'Please log in to access this page.'
     login_manager.login_message_category = 'info'
+    login_manager.refresh_view = 'routes.login'
+    login_manager.needs_refresh_message = 'Please login again to confirm your identity.'
+    login_manager.needs_refresh_message_category = 'info'
+    login_manager.session_protection = "strong"
 
     # Create or update styles.css
     styles_css_path = os.path.join(static_dir, 'css', 'styles.css')
@@ -326,29 +350,26 @@ form button:hover {
                 print(f"Detailed error during initialization: {str(e)}")
                 raise
 
-    # Add template context processors
-    @app.context_processor
-    def utility_processor():
-        return {
-            'current_year': datetime.now().year,
-            'app_name': 'DocuOracle'
-        }
+        # Add template context processors
+        @app.context_processor
+        def utility_processor():
+            return {
+                'current_year': datetime.now().year,
+                'app_name': 'DocuOracle'
+            }
 
-    # Error handlers
-    @app.errorhandler(404)
-    def not_found_error(error):
-        return render_template('errors/404.html'), 404
+        # Error handlers
+        @app.errorhandler(404)
+        def not_found_error():
+            return render_template('errors/404.html'), 404
 
-    @app.errorhandler(500)
-    def internal_error(error):
-        db.session.rollback()
-        return render_template('errors/500.html'), 500
+        @app.errorhandler(500)
+        def internal_error():
+            db.session.rollback()
+            return render_template('errors/500.html'), 500
 
-    return app
+        return app
 
-
-# Import models to ensure they're registered with SQLAlchemy
-from . import models
 
 # Export components
 __all__ = [
@@ -360,7 +381,10 @@ __all__ = [
     'load_user'
 ]
 
-# Make llama_handler available after import
-from .llama_handler import llama_handler
+# Make llama_handler available
+try:
+    from .llama_handler import llama_handler
 
-__all__.append('llama_handler')
+    __all__.append('llama_handler')
+except ImportError:
+    logger.warning("Could not import llama_handler")

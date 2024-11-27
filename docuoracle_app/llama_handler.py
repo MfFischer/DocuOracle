@@ -27,7 +27,7 @@ class ModelProvider(Enum):
 @dataclass
 class RAGConfig:
     """Configuration for RAG components"""
-    llm_model: str = "facebook/opt-350m"  # Default to open-access model
+    llm_model: str = "facebook/opt-350m"  # Using OPT model
     embedding_model: str = "sentence-transformers/all-MiniLM-L6-v2"
     provider: ModelProvider = ModelProvider.HUGGINGFACE_SPACE
     device: str = "cuda" if torch.cuda.is_available() else "cpu"
@@ -66,25 +66,39 @@ class LlamaHandler:
         self._vector_store = None
 
     def initialize_llama(self) -> Tuple[bool, str]:
-        """Initialize local Llama model"""
-        logger.info("Attempting to initialize local Llama model...")
+        """Initialize model using Hugging Face"""
+        logger.info("Attempting to initialize Hugging Face model...")
 
         try:
-            if not os.path.exists(self.config.MODEL_PATH):
-                error_msg = f"Model file not found at {self.config.MODEL_PATH}"
+            # Get HF token from environment
+            hf_token = os.getenv('HF_TOKEN')
+            if not hf_token:
+                error_msg = "HF_TOKEN not found in environment variables"
                 logger.error(error_msg)
                 return False, error_msg
 
-            self._model = AutoModelForCausalLM.from_pretrained(
-                self.config.MODEL_PATH,
-                model_type=self.config.MODEL_TYPE,
-                gpu_layers=self.config.GPU_LAYERS,
-                context_length=self.config.CONTEXT_LENGTH,
-                threads=self.config.THREADS
-            )
-            self._initialized = True
-            logger.info("Llama initialization successful!")
-            return True, "Llama model initialized successfully!"
+            # Login to Hugging Face
+            login(token=hf_token)
+
+            # Initialize tokenizer and model
+            model_name = "facebook/opt-350m"  # Using OPT model instead of Mistral
+            try:
+                self._tokenizer = AutoTokenizer.from_pretrained(model_name)
+                self._model = AutoModel.from_pretrained(
+                    model_name,
+                    token=hf_token,
+                    device_map=self.device,
+                    torch_dtype=torch.float16 if torch.cuda.is_available() else torch.float32
+                )
+
+                self._initialized = True
+                logger.info("Hugging Face OPT model initialization successful!")
+                return True, "Model initialized successfully!"
+
+            except Exception as model_error:
+                error_msg = f"Error loading model: {str(model_error)}"
+                logger.error(error_msg)
+                return False, error_msg
 
         except Exception as e:
             error_msg = f"Error during initialization: {str(e)}"
