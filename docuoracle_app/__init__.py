@@ -1,30 +1,92 @@
-from flask import Flask
+from flask import Flask, render_template
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 from flask_login import LoginManager
 import os
 from datetime import datetime
-from flask import Flask, render_template
+from dotenv import load_dotenv
+import logging
+from flask_wtf.csrf import CSRFProtect
+
+# Load environment variables
+load_dotenv()
 
 # Initialize extensions
 db = SQLAlchemy()
 migrate = Migrate()
 login_manager = LoginManager()
+csrf = CSRFProtect()
+logger = logging.getLogger(__name__)
+
+
+# Initialize Flask-Login
+@login_manager.user_loader
+def load_user(user_id):
+    """User loader for Flask-Login."""
+    from .models import User
+    try:
+        return User.query.get(int(user_id))
+    except Exception as e:
+        logger.error(f"Error loading user: {e}")
+        return None
+
+
+def init_llama(app):
+    """Initialize LLM based on configuration."""
+    from .llama_handler import initialize_llama, initialize_rag, llama_handler
+
+    try:
+        if app.config['MODEL_PROVIDER'] == 'hf_space':
+            # Initialize with RAG for Hugging Face
+            requirements = {
+                'deployment': 'production',
+                'resources': 'limited' if app.config.get('RESOURCES_LIMITED', True) else 'full'
+            }
+            success, message = initialize_rag(requirements)
+            if not success:
+                app.logger.error(f"Failed to initialize RAG: {message}")
+        else:
+            # Initialize traditional local model
+            success, message = initialize_llama()
+            if not success:
+                app.logger.error(f"Failed to initialize local model: {message}")
+
+        return success, message
+    except Exception as e:
+        app.logger.error(f"Error initializing LLM: {e}")
+        return False, str(e)
 
 
 def create_app():
     """Application factory for creating the Flask app."""
-    # Get absolute paths for templates and static directories
-    app_dir = os.path.abspath(os.path.dirname(__file__))
+    base_dir = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
+
+    # Define app directories with absolute paths
+    app_dir = os.path.join(base_dir, 'docuoracle_app')
     template_dir = os.path.join(app_dir, 'templates')
     static_dir = os.path.join(app_dir, 'static')
+    upload_dir = os.path.join(base_dir, 'uploads')
+    models_dir = os.path.join(base_dir, 'models')
+
+    # Use AppData for database storage (more reliable on Windows)
+    appdata_dir = os.path.join(os.environ.get('APPDATA', base_dir), 'DocuOracle')
+
+    print(f"Database directory will be: {appdata_dir}")  # Debug print
 
     # Ensure required directories exist
-    os.makedirs(template_dir, exist_ok=True)
-    os.makedirs(static_dir, exist_ok=True)
-    os.makedirs(os.path.join(static_dir, 'css'), exist_ok=True)
-    os.makedirs(os.path.join(static_dir, 'js'), exist_ok=True)
-    os.makedirs(os.path.join(static_dir, 'img'), exist_ok=True)
+    for directory in [
+        template_dir,
+        static_dir,
+        upload_dir,
+        models_dir,
+        os.path.join(static_dir, 'css'),
+        appdata_dir
+    ]:
+        try:
+            os.makedirs(directory, exist_ok=True)
+            print(f"Created/verified directory: {directory}")
+        except Exception as e:
+            print(f"Error creating directory {directory}: {e}")
 
     # Initialize Flask app
     app = Flask(__name__,
@@ -32,15 +94,69 @@ def create_app():
                 static_folder=static_dir,
                 static_url_path='/static')
 
-    # Load configuration
-    from config import Config
-    app.config.from_object(Config)
-    Config.init_app(app)
+    # Initialize CSRF protection
+    csrf.init_app(app)
 
-    # Initialize extensions
+    # Configure database with Windows-friendly path
+    db_path = os.path.join(appdata_dir, 'docuoracle.db')
+
+    # Convert Windows path to SQLAlchemy format
+    db_uri = f'sqlite:///{db_path.replace(os.sep, "/")}'
+    print(f"Database URI: {db_uri}")  # Debug print
+
+    # Load configuration
+    app.config.update(
+        SECRET_KEY=os.getenv('SECRET_KEY', 'your-default-secret-key'),
+        SQLALCHEMY_DATABASE_URI=db_uri,
+        SQLALCHEMY_TRACK_MODIFICATIONS=False,
+        UPLOAD_FOLDER=upload_dir,
+
+        # Model Configuration
+        HF_TOKEN=os.getenv('HF_TOKEN'),
+        MODEL_PROVIDER=os.getenv('MODEL_PROVIDER', 'hf_space'),
+        RESOURCES_LIMITED=os.getenv('RESOURCES_LIMITED', 'true').lower() == 'true',
+        MODEL_DEPLOYMENT=os.getenv('MODEL_DEPLOYMENT', 'production'),
+
+        # RAG Configuration
+        RAG_CHUNK_SIZE=int(os.getenv('RAG_CHUNK_SIZE', 500)),
+        RAG_CHUNK_OVERLAP=int(os.getenv('RAG_CHUNK_OVERLAP', 50)),
+        RAG_TOP_K=int(os.getenv('RAG_TOP_K', 3)),
+        RAG_MODEL=os.getenv('RAG_MODEL', 'facebook/opt-350m'),
+        RAG_EMBEDDINGS_MODEL=os.getenv('RAG_EMBEDDINGS_MODEL', 'sentence-transformers/all-MiniLM-L6-v2'),
+
+        # Processing Configuration
+        MAX_LENGTH=int(os.getenv('MAX_LENGTH', 512)),
+        TEMPERATURE=float(os.getenv('TEMPERATURE', 0.7)),
+        BATCH_SIZE=int(os.getenv('BATCH_SIZE', 8)),
+        CONCURRENT_REQUESTS=int(os.getenv('CONCURRENT_REQUESTS', 4)),
+
+        # Security Configuration
+        MAX_CONTENT_LENGTH=int(os.getenv('MAX_CONTENT_LENGTH', 16 * 1024 * 1024)),
+        ALLOWED_EXTENSIONS=set(os.getenv('ALLOWED_EXTENSIONS', 'pdf,docx,xlsx,xls,csv').split(',')),
+
+        WTF_CSRF_ENABLED=True,
+        WTF_CSRF_SECRET_KEY=os.getenv('CSRF_SECRET_KEY', 'your-csrf-secret-key')
+    )
+
+    # Configure logging
+    log_level = os.getenv('LOG_LEVEL', 'INFO')
+    logging.basicConfig(
+        level=getattr(logging, log_level),
+        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    )
+
+    if os.getenv('ENABLE_FILE_LOGGING', 'false').lower() == 'true':
+        file_handler = logging.FileHandler(os.getenv('LOG_FILE', 'app.log'))
+        file_handler.setFormatter(logging.Formatter(
+            '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+        ))
+        app.logger.addHandler(file_handler)
+
+    # Initialize extensions with app
     db.init_app(app)
     migrate.init_app(app, db)
     login_manager.init_app(app)
+    csrf.init_app(app)
 
     # Configure login manager
     login_manager.login_view = 'routes.login'
@@ -58,15 +174,91 @@ def create_app():
     --text-color: #ffffff;
 }
 
-/* Animations */
-@keyframes fadeIn {
-    from { opacity: 0; transform: translateY(-10px); }
-    to { opacity: 1; transform: translateY(0); }
+/* General body styling */
+body {
+    background-color: var(--primary-bg);
+    color: var(--text-color);
+    font-family: Arial, sans-serif;
+    margin: 0;
+    padding: 0;
 }
 
-@keyframes fadeOut {
-    from { opacity: 1; transform: translateY(0); }
-    to { opacity: 0; transform: translateY(-10px); }
+/* Navbar styling */
+.navbar {
+    background-color: var(--secondary-bg);
+    padding: 10px;
+    text-align: center;
+}
+
+.navbar a {
+    color: var(--accent-color);
+    text-decoration: none;
+    margin: 0 15px;
+    font-size: 18px;
+}
+
+.navbar a:hover {
+    text-decoration: underline;
+}
+
+/* Form styling */
+form {
+    max-width: 400px;
+    margin: 50px auto;
+    padding: 20px;
+    background-color: var(--secondary-bg);
+    border-radius: 8px;
+}
+
+form input[type="text"],
+form input[type="password"],
+form input[type="email"],
+form input[type="file"] {
+    width: 100%;
+    padding: 10px;
+    margin-bottom: 15px;
+    border: none;
+    border-radius: 4px;
+    background-color: #333;
+    color: #fff;
+}
+
+form button {
+    background-color: var(--accent-color);
+    border: none;
+    color: #fff;
+    padding: 10px;
+    cursor: pointer;
+    border-radius: 4px;
+    width: 100%;
+}
+
+form button:hover {
+    background-color: #4b9bff;
+}
+
+/* Flash messages */
+.alert {
+    padding: 10px;
+    margin: 10px 0;
+    border-radius: 4px;
+}
+
+.alert-success {
+    background-color: #4CAF50;
+    color: white;
+}
+
+.alert-danger {
+    background-color: #f44336;
+    color: white;
+}
+
+/* Utility classes */
+.container {
+    padding: 20px;
+    max-width: 1200px;
+    margin: 0 auto;
 }
 
 .fade-in {
@@ -77,7 +269,7 @@ def create_app():
     animation: fadeOut 0.3s ease-in forwards;
 }
 
-/* Custom scrollbar */
+/* Scrollbar styling */
 ::-webkit-scrollbar {
     width: 8px;
     height: 8px;
@@ -95,87 +287,80 @@ def create_app():
 ::-webkit-scrollbar-thumb:hover {
     background: rgba(96, 165, 250, 0.7);
 }
-
-/* Utility classes */
-.backdrop-blur {
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
-}
 """)
 
-    with app.app_context():
-        try:
-            # Register blueprints
-            from .routes import routes_blueprint
-            app.register_blueprint(routes_blueprint)
+        # Register blueprints and initialize database
+        with app.app_context():
+            try:
+                # Test database connection before creating tables
+                with app.app_context():
+                    try:
+                        db.engine.connect()
+                        print("Database connection successful")
+                    except Exception as e:
+                        print(f"Database connection failed: {e}")
+                        raise
 
-            from .api import api_blueprint
-            app.register_blueprint(api_blueprint, url_prefix='/api')
+                    # Initialize database
+                    db.create_all()
+                    print("Database tables created successfully")
 
-            from .swagger_config import swaggerui_blueprint
-            app.register_blueprint(swaggerui_blueprint, url_prefix='/swagger')
+                # Initialize LLM
+                init_llama(app)
 
-            # Add template context processors
-            @app.context_processor
-            def utility_processor():
-                return {
-                    'current_year': datetime.now().year,
-                    'app_name': 'DocuOracle'
-                }
+                # Register blueprints
+                from .routes import routes_blueprint
+                app.register_blueprint(routes_blueprint)
 
-            # Add error handlers
-            @app.errorhandler(404)
-            def not_found_error(error):
-                return render_template('errors/404.html'), 404
+                from .api import api_blueprint
+                app.register_blueprint(api_blueprint, url_prefix='/api')
 
-            @app.errorhandler(500)
-            def internal_error(error):
-                db.session.rollback()
-                return render_template('errors/500.html'), 500
+                try:
+                    from .swagger_config import swaggerui_blueprint
+                    app.register_blueprint(swaggerui_blueprint, url_prefix='/swagger')
+                except ImportError:
+                    app.logger.warning("Swagger UI blueprint not available")
 
-            # Debug routes
-            if app.debug:
-                @app.route('/debug/static')
-                def debug_static():
-                    return {
-                        'static_folder': app.static_folder,
-                        'static_url_path': app.static_url_path,
-                        'template_folder': app.template_folder,
-                        'static_files': os.listdir(static_dir),
-                        'template_files': os.listdir(template_dir),
-                        'css_files': os.listdir(os.path.join(static_dir, 'css')),
-                    }
+            except Exception as e:
+                app.logger.error(f"Error during app initialization: {e}")
+                print(f"Detailed error during initialization: {str(e)}")
+                raise
 
-                @app.route('/debug/config')
-                def debug_config():
-                    safe_config = {k: str(v) for k, v in app.config.items()
-                                   if not k.upper().startswith(('SECRET', 'PASSWORD'))}
-                    return safe_config
+    # Add template context processors
+    @app.context_processor
+    def utility_processor():
+        return {
+            'current_year': datetime.now().year,
+            'app_name': 'DocuOracle'
+        }
 
-            # Verify template directory structure
-            required_templates = ['base.html', 'home.html', 'login.html', 'register.html']
-            missing_templates = [t for t in required_templates
-                                 if not os.path.exists(os.path.join(template_dir, t))]
+    # Error handlers
+    @app.errorhandler(404)
+    def not_found_error(error):
+        return render_template('errors/404.html'), 404
 
-            if missing_templates:
-                print(f"Warning: Missing templates: {missing_templates}")
-
-        except Exception as e:
-            print(f"Error during app initialization: {e}")
-            raise
+    @app.errorhandler(500)
+    def internal_error(error):
+        db.session.rollback()
+        return render_template('errors/500.html'), 500
 
     return app
 
 
-@login_manager.user_loader
-def load_user(user_id):
-    from .models import User
-    try:
-        return User.query.get(int(user_id))
-    except Exception as e:
-        print(f"Error loading user: {e}")
-        return None
-
-
 # Import models to ensure they're registered with SQLAlchemy
 from . import models
+
+# Export components
+__all__ = [
+    'db',
+    'migrate',
+    'login_manager',
+    'csrf',
+    'create_app',
+    'load_user'
+]
+
+# Make llama_handler available after import
+from .llama_handler import llama_handler
+
+__all__.append('llama_handler')

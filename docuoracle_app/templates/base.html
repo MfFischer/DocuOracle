@@ -6,23 +6,21 @@
     <title>{% block title %}DocuOracle{% endblock %}</title>
 
     <!-- Meta tags -->
-    <meta name="description" content="AI-powered document analysis and visualization platform">
+    <meta name="description" content="AI-powered document analysis and visualization platform with RAG support">
     <meta name="theme-color" content="#1a1a1a">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
 
-    <!-- Inter font -->
+    <!-- Core Dependencies -->
     <link rel="stylesheet" href="https://rsms.me/inter/inter.css">
-
-    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-
-    <!-- Alpine.js -->
     <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
 
-    <!-- Chart.js -->
+    <!-- Visualization and Processing Libraries -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
 
     <!-- Base Styles -->
     <style>
@@ -43,58 +41,41 @@
             50% { opacity: 0.5; }
         }
 
-        .fade-in {
-            animation: fadeIn 0.3s ease-out;
+        .fade-in { animation: fadeIn 0.3s ease-out; }
+        .fade-out { animation: fadeOut 0.3s ease-in forwards; }
+        .loading-pulse { animation: pulse 1.5s ease-in-out infinite; }
+
+        /* RAG Analysis Styles */
+        .rag-result {
+            background: rgba(45, 45, 45, 0.7);
+            border-radius: 0.5rem;
+            padding: 1rem;
+            margin-top: 1rem;
+            border: 1px solid rgba(96, 165, 250, 0.2);
         }
 
-        .fade-out {
-            animation: fadeOut 0.3s ease-in forwards;
-        }
-
-        .loading-pulse {
-            animation: pulse 1.5s ease-in-out infinite;
-        }
-
-        /* Improved prose styles */
-        .prose-invert {
-            color: #ffffff;
-        }
-
-        .prose-invert h1, .prose-invert h2, .prose-invert h3 {
-            color: #60a5fa;
-            margin-top: 1.5em;
-            margin-bottom: 0.5em;
-            font-weight: 600;
-        }
-
-        .prose-invert p {
-            margin-bottom: 1em;
-            line-height: 1.6;
-        }
-
-        .prose-invert ul, .prose-invert ol {
-            margin-left: 1.5em;
-            margin-bottom: 1em;
-        }
-
-        .prose-invert li {
-            margin-bottom: 0.5em;
-            line-height: 1.5;
-        }
-
-        .prose-invert pre {
-            background-color: rgba(45, 45, 45, 0.7);
-            padding: 1em;
-            border-radius: 0.5em;
-            margin: 1em 0;
-            overflow-x: auto;
-        }
-
-        .prose-invert code {
-            background-color: rgba(45, 45, 45, 0.5);
-            padding: 0.2em 0.4em;
-            border-radius: 0.3em;
+        .rag-source {
+            background: rgba(30, 30, 30, 0.5);
+            border-left: 3px solid #60a5fa;
+            padding: 0.5rem 1rem;
+            margin: 0.5rem 0;
             font-size: 0.9em;
+        }
+
+        /* Loading Animation */
+        .rag-loading {
+            background: linear-gradient(90deg,
+                rgba(96, 165, 250, 0.1) 25%,
+                rgba(96, 165, 250, 0.2) 50%,
+                rgba(96, 165, 250, 0.1) 75%
+            );
+            background-size: 200% 100%;
+            animation: ragLoadingPulse 1.5s infinite;
+        }
+
+        @keyframes ragLoadingPulse {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
         }
 
         /* Visualization container styles */
@@ -105,13 +86,6 @@
             padding: 1rem;
             margin-top: 1rem;
             border: 1px solid rgba(96, 165, 250, 0.2);
-        }
-
-        /* Chat container styles */
-        .chat-container {
-            margin-top: 2rem;
-            border-top: 1px solid rgba(96, 165, 250, 0.2);
-            padding-top: 1rem;
         }
 
         /* Custom scrollbar */
@@ -160,8 +134,128 @@
         }
     </script>
 
-    {% block styles %}{% endblock %}
+    <!-- CSRF Protection Script -->
+    <script>
+        // Global CSRF token
+        window.csrfToken = document.querySelector('meta[name="csrf-token"]').content;
+
+        // Global fetch wrapper with CSRF
+        async function makeRequest(url, method = 'GET', data = null) {
+            try {
+                const options = {
+                    method: method,
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': window.csrfToken
+                    },
+                    credentials: 'same-origin'
+                };
+
+                if (data && (method === 'POST' || method === 'PUT')) {
+                    options.body = JSON.stringify(data);
+                }
+
+                const response = await fetch(url, options);
+                const result = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(result.error || 'Request failed');
+                }
+
+                return result;
+            } catch (error) {
+                console.error('API request failed:', error);
+                showToast(error.message, 'error');
+                throw error;
+            }
+        }
+
+        // File upload with CSRF
+        async function uploadFile(url, file, onProgress) {
+            return new Promise((resolve, reject) => {
+                const formData = new FormData();
+                formData.append('file', file);
+                formData.append('csrf_token', window.csrfToken);
+
+                const xhr = new XMLHttpRequest();
+
+                xhr.upload.addEventListener('progress', (e) => {
+                    if (e.lengthComputable && onProgress) {
+                        const percentComplete = (e.loaded / e.total) * 100;
+                        onProgress(percentComplete);
+                    }
+                });
+
+                xhr.addEventListener('load', () => {
+                    if (xhr.status === 200) {
+                        try {
+                            const response = JSON.parse(xhr.responseText);
+                            resolve(response);
+                        } catch (error) {
+                            reject(new Error('Invalid response format'));
+                        }
+                    } else {
+                        reject(new Error(`Upload failed: ${xhr.statusText}`));
+                    }
+                });
+
+                xhr.addEventListener('error', () => reject(new Error('Upload failed')));
+                xhr.addEventListener('abort', () => reject(new Error('Upload aborted')));
+
+                xhr.open('POST', url);
+                xhr.setRequestHeader('X-CSRFToken', window.csrfToken);
+                xhr.send(formData);
+            });
+        }
+
+        // Toast notification function
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('flash-messages');
+            const toast = document.createElement('div');
+
+            const bgColor = type === 'success' ? 'bg-green-500/90' :
+                           type === 'error' ? 'bg-red-500/90' :
+                           'bg-blue-500/90';
+
+            toast.className = `p-4 rounded-lg shadow-lg fade-in backdrop-blur-sm ${bgColor} flex items-center justify-between`;
+            toast.innerHTML = `
+                <span>${message}</span>
+                <button onclick="this.parentElement.remove()" class="ml-4 text-white/80 hover:text-white transition-colors">
+                    &times;
+                </button>
+            `;
+
+            container.appendChild(toast);
+            setTimeout(() => {
+                toast.classList.add('fade-out');
+                setTimeout(() => toast.remove(), 300);
+            }, 5000);
+        }
+
+        // Loading state handlers
+        function setLoading(element, state, message = 'Loading...') {
+            if (state) {
+                element.classList.add('loading-pulse');
+                element.disabled = true;
+                element._originalContent = element.innerHTML;
+                element.innerHTML = `
+                    <svg class="animate-spin h-5 w-5 mr-2" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    ${message}
+                `;
+            } else {
+                element.classList.remove('loading-pulse');
+                element.disabled = false;
+                element.innerHTML = element._originalContent;
+            }
+        }
+    </script>
+
+    {% block head %}{% endblock %}
 </head>
+
 <body class="bg-dark-primary text-light min-h-screen flex flex-col" x-data="{ isDark: true }">
     <!-- Navigation -->
     <nav class="sticky top-0 z-40 backdrop-blur-md bg-dark-secondary/80 shadow-lg border-b border-accent/20">
@@ -179,6 +273,12 @@
                                class="text-light/80 hover:text-light transition-colors duration-300">
                                 Dashboard
                             </a>
+                            <a href="{{ url_for('routes.upload') }}"
+                               class="text-light/80 hover:text-light transition-colors duration-300">
+                                Upload
+                            </a>
+
+
                         </div>
                     {% endif %}
                 </div>
@@ -199,8 +299,7 @@
                             <div x-show="isOpen"
                                  @click.away="isOpen = false"
                                  x-cloak
-                                 class="absolute right-0 mt-2 w-48 rounded-lg bg-dark-secondary/90 shadow-lg ring-1 ring-black ring-opacity-5 backdrop-blur-sm py-1
-                                        transition-all duration-200 ease-out origin-top-right">
+                                 class="absolute right-0 mt-2 w-48 rounded-lg bg-dark-secondary/90 shadow-lg ring-1 ring-black ring-opacity-5 backdrop-blur-sm py-1">
                                 <a href="{{ url_for('routes.profile') }}"
                                    class="block px-4 py-2 text-sm text-light/80 hover:bg-accent/20 transition-colors">
                                     Profile
@@ -210,10 +309,13 @@
                                     Settings
                                 </a>
                                 <div class="border-t border-accent/20 my-1"></div>
-                                <a href="{{ url_for('routes.logout') }}"
-                                   class="block px-4 py-2 text-sm text-red-400 hover:bg-accent/20 transition-colors">
-                                    Logout
-                                </a>
+                                <form method="POST" action="{{ url_for('routes.logout') }}">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <button type="submit"
+                                            class="block w-full text-left px-4 py-2 text-sm text-red-400 hover:bg-accent/20 transition-colors">
+                                        Logout
+                                    </button>
+                                </form>
                             </div>
                         </div>
                     {% else %}
@@ -268,50 +370,6 @@
 
     <!-- Common Scripts -->
     <script>
-        // Flash message handling
-        function showToast(message, type = 'info') {
-            const container = document.getElementById('flash-messages');
-            const toast = document.createElement('div');
-
-            const bgColor = type === 'success' ? 'bg-green-500/90' :
-                           type === 'error' ? 'bg-red-500/90' :
-                           'bg-blue-500/90';
-
-            toast.className = `p-4 rounded-lg shadow-lg fade-in backdrop-blur-sm ${bgColor} flex items-center justify-between`;
-            toast.innerHTML = `
-                <span>${message}</span>
-                <button onclick="this.parentElement.remove()" class="ml-4 text-white/80 hover:text-white transition-colors">
-                    &times;
-                </button>
-            `;
-
-            container.appendChild(toast);
-            setTimeout(() => {
-                toast.classList.add('fade-out');
-                setTimeout(() => toast.remove(), 300);
-            }, 5000);
-        }
-
-        // Loading state handlers
-        function setLoading(element, state, message = 'Loading...') {
-            if (state) {
-                element.classList.add('loading-pulse');
-                element.disabled = true;
-                element._originalContent = element.innerHTML;
-                element.innerHTML = `
-                    <svg class="animate-spin h-5 w-5 mr-2" viewBox="0 0 24 24">
-                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                    ${message}
-                `;
-            } else {
-                element.classList.remove('loading-pulse');
-                element.disabled = false;
-                element.innerHTML = element._originalContent;
-            }
-        }
-
         // Initialize on page load
         document.addEventListener('DOMContentLoaded', function() {
             // Auto-dismiss flash messages
@@ -322,7 +380,141 @@
                     setTimeout(() => message.remove(), 300);
                 }, 5000);
             });
+
+            // Initialize RAG if needed
+            if (document.querySelector('[data-rag-enabled]')) {
+                ragHandler.checkStatus().then(status => {
+                    if (!status) {
+                        ragHandler.initialize().then(result => {
+                            if (result.success) {
+                                console.log('RAG initialized successfully');
+                            } else {
+                                console.error('RAG initialization failed:', result.error);
+                            }
+                        });
+                    }
+                });
+            }
         });
+
+        // RAG Handler Script
+        const ragHandler = {
+            async checkStatus() {
+                try {
+                    const response = await fetch('/api/llama/status');
+                    const data = await response.json();
+                    return data.initialized;
+                } catch (error) {
+                    console.error('Error checking RAG status:', error);
+                    return false;
+                }
+            },
+
+            async initialize(config = {}) {
+                try {
+                    const response = await fetch('/api/initialize_model', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content
+                        },
+                        body: JSON.stringify({
+                            use_rag: true,
+                            deployment: config.deployment || 'production',
+                            resources: config.resources || 'limited'
+                        })
+                    });
+                    return await response.json();
+                } catch (error) {
+                    console.error('Error initializing RAG:', error);
+                    return { success: false, error: error.message };
+                }
+            },
+
+            async processDocument(documentId, question) {
+                try {
+                    const response = await fetch('/process_document', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content
+                        },
+                        body: JSON.stringify({
+                            document_id: documentId,
+                            question: question,
+                            use_rag: true
+                        })
+                    });
+                    return await response.json();
+                } catch (error) {
+                    console.error('Error processing document:', error);
+                    return { success: false, error: error.message };
+                }
+            }
+        };
+
+        / File upload helper
+async function uploadFile(url, file, onProgress) {
+    return new Promise((resolve, reject) => {
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('csrf_token', getCSRFToken());
+
+        const xhr = new XMLHttpRequest();
+
+        xhr.upload.addEventListener('progress', (e) => {
+            if (e.lengthComputable && onProgress) {
+                const percentComplete = (e.loaded / e.total) * 100;
+                onProgress(percentComplete);
+            }
+        });
+
+        xhr.addEventListener('load', () => {
+            if (xhr.status === 200) {
+                try {
+                    const response = JSON.parse(xhr.responseText);
+                    resolve(response);
+                } catch (error) {
+                    reject(new Error('Invalid response format'));
+                }
+            } else {
+                try {
+                    const errorResponse = JSON.parse(xhr.responseText);
+                    reject(new Error(errorResponse.error || `Upload failed: ${xhr.statusText}`));
+                } catch (error) {
+                    reject(new Error(`Upload failed: ${xhr.statusText}`));
+                }
+            }
+        });
+
+        xhr.addEventListener('error', () => reject(new Error('Upload failed')));
+        xhr.addEventListener('abort', () => reject(new Error('Upload aborted')));
+
+        xhr.open('POST', url);
+        xhr.setRequestHeader('X-CSRFToken', getCSRFToken());
+        xhr.send(formData);
+    });
+}
+        // Document analysis helper
+        async function analyzeDocument(documentId, question, useRag = true) {
+            try {
+                const result = await makeRequest('/process_document', 'POST', {
+                    document_id: documentId,
+                    question: question,
+                    use_rag: useRag
+                });
+
+                if (result.success) {
+                    return result;
+                } else {
+                    throw new Error(result.error || 'Analysis failed');
+                }
+            } catch (error) {
+                console.error('Document analysis failed:', error);
+                showToast(error.message, 'error');
+                throw error;
+            }
+        }
     </script>
 
     {% block scripts %}{% endblock %}

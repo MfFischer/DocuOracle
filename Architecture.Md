@@ -19,6 +19,9 @@ docuoracle/
 │   │   ├── register.html     # Registration form
 │   │   ├── profile.html
 │   │   ├── settings.html
+│   │   ├── reset_password.html
+│   │   ├── upload.html
+│   │   ├── view_document.html
 │   │   ├── analyze.html
 │   ├── static/
 │   │   ├── styles.css        # Custom styles, if any
@@ -27,11 +30,13 @@ docuoracle/
 ├── database/
 │   └── app.db                # SQLite database for users and documents
 │
-├── llama_model/              # Placeholder directory for LLaMA (Ollama) model if needed
-│   └── model_weights/        # Model weights for LLaMA (optional)
+├── models/              # Placeholder directory for LLaMA (Ollama) model if needed
+│   └── mistral-7b-instruct-v0.1.Q4_K_M.gguf        # Model weights for LLaMA (optional)
 │
 ├── scripts/
 │   └── install.sh            # Installation script for dependencies
+├── uploads/
+│   └── 1/ 
 │
 ├── tests/
 │   ├── test_routes.py        # Unit tests for API and routes functionality
@@ -39,6 +44,7 @@ docuoracle/
 │
 ├── requirements.txt          # Python dependencies (Flask, SQLAlchemy, etc.)
 ├── config.py                 # Configuration settings (SQLAlchemy DB URI, secret key, etc.)
-├── init_db.py                
+├── init_db.py       
+├── docker_compose.yml
 ├── run.py                    # Flask app entry point
 └── README.md                 # Project documentation

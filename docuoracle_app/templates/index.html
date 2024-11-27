@@ -1,0 +1,207 @@
+{% extends "base.html" %}
+
+{% block title %}DocuOracle - Intelligent Document Analysis{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-gray-900">
+    <!-- Navigation -->
+    <nav class="px-6 py-4 border-b border-gray-800">
+        <div class="container mx-auto flex justify-between items-center">
+            <div class="flex items-center space-x-2">
+                <svg class="w-8 h-8 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                          d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                </svg>
+                <span class="text-2xl font-bold text-white">DocuOracle</span>
+            </div>
+            <div class="flex items-center space-x-4">
+                {% if current_user.is_authenticated %}
+                    <a href="{{ url_for('routes.home') }}"
+                       class="text-gray-300 hover:text-white transition-colors">Dashboard</a>
+                    <a href="{{ url_for('routes.logout') }}"
+                       class="text-gray-300 hover:text-white transition-colors">Logout</a>
+                {% else %}
+                    <a href="{{ url_for('routes.login') }}"
+                       class="text-gray-300 hover:text-white transition-colors">Login</a>
+                    <a href="{{ url_for('routes.register') }}"
+                       class="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-500 transition-colors">
+                        Get Started
+                    </a>
+                {% endif %}
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <div class="container mx-auto px-6 py-16 text-center">
+        <h1 class="text-5xl font-bold text-white mb-6">
+            Understand Your Documents with
+            <span class="text-purple-500">AI Intelligence</span>
+        </h1>
+        <p class="text-xl text-gray-400 mb-8 max-w-2xl mx-auto">
+            DocuOracle combines advanced AI with powerful visualization tools to help you extract insights,
+            analyze data, and understand your documents better than ever before.
+        </p>
+        {% if not current_user.is_authenticated %}
+            <div class="flex justify-center space-x-4">
+                <a href="{{ url_for('routes.register') }}"
+                   class="bg-purple-600 text-white px-8 py-3 rounded-lg hover:bg-purple-500 transition-colors">
+                    Start For Free
+                </a>
+                <a href="#features"
+                   class="border border-purple-500 text-purple-500 px-8 py-3 rounded-lg hover:bg-purple-500/10 transition-colors">
+                    Learn More
+                </a>
+            </div>
+        {% else %}
+            <a href="{{ url_for('routes.home') }}"
+               class="bg-purple-600 text-white px-8 py-3 rounded-lg hover:bg-purple-500 transition-colors">
+                Go to Dashboard
+            </a>
+        {% endif %}
+    </div>
+
+    <!-- Features Section -->
+    <div id="features" class="bg-gray-800/50 py-16">
+        <div class="container mx-auto px-6">
+            <h2 class="text-3xl font-bold text-white mb-12 text-center">Key Features</h2>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                <!-- Document Analysis -->
+                <div class="bg-gray-800 rounded-xl p-6">
+                    <div class="text-purple-500 mb-4">
+                        <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                  d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                        </svg>
+                    </div>
+                    <h3 class="text-xl font-semibold text-white mb-2">Smart Document Analysis</h3>
+                    <p class="text-gray-400">
+                        Upload any document and ask questions in natural language. Get intelligent responses powered by advanced AI.
+                    </p>
+                </div>
+
+                <!-- Data Visualization -->
+                <div class="bg-gray-800 rounded-xl p-6">
+                    <div class="text-purple-500 mb-4">
+                        <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                  d="M8 13v-1m4 1v-3m4 3V8M12 21l9-9-9-9-9 9 9 9z"/>
+                        </svg>
+                    </div>
+                    <h3 class="text-xl font-semibold text-white mb-2">Advanced Visualizations</h3>
+                    <p class="text-gray-400">
+                        Transform your data into meaningful visualizations. Support for various chart types and customization options.
+                    </p>
+                </div>
+
+                <!-- Quick Analysis -->
+                <div class="bg-gray-800 rounded-xl p-6">
+                    <div class="text-purple-500 mb-4">
+                        <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                  d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                        </svg>
+                    </div>
+                    <h3 class="text-xl font-semibold text-white mb-2">Quick Analysis</h3>
+                    <p class="text-gray-400">
+                        Get instant insights from your data with automated analysis and pattern detection.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- File Support Section -->
+    <div class="container mx-auto px-6 py-16">
+        <h2 class="text-3xl font-bold text-white mb-8 text-center">Supported File Types</h2>
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-6 max-w-3xl mx-auto">
+            <!-- PDF -->
+            <div class="bg-gray-800 rounded-xl p-6 text-center">
+                <div class="text-red-500 mb-2">
+                    <svg class="w-8 h-8 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>
+                    </svg>
+                </div>
+                <span class="text-white font-medium">PDF Files</span>
+            </div>
+
+            <!-- Word -->
+            <div class="bg-gray-800 rounded-xl p-6 text-center">
+                <div class="text-blue-500 mb-2">
+                    <svg class="w-8 h-8 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>
+                    </svg>
+                </div>
+                <span class="text-white font-medium">Word Documents</span>
+            </div>
+
+            <!-- Excel -->
+            <div class="bg-gray-800 rounded-xl p-6 text-center">
+                <div class="text-green-500 mb-2">
+                    <svg class="w-8 h-8 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>
+                    </svg>
+                </div>
+                <span class="text-white font-medium">Excel Spreadsheets</span>
+            </div>
+
+            <!-- CSV -->
+            <div class="bg-gray-800 rounded-xl p-6 text-center">
+                <div class="text-yellow-500 mb-2">
+                    <svg class="w-8 h-8 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>
+                    </svg>
+                </div>
+                <span class="text-white font-medium">CSV Files</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- CTA Section -->
+    <div class="bg-purple-600/20 py-16">
+        <div class="container mx-auto px-6 text-center">
+            <h2 class="text-3xl font-bold text-white mb-4">Ready to Get Started?</h2>
+            <p class="text-gray-300 mb-8 max-w-2xl mx-auto">
+                Join thousands of users who are already using DocuOracle to unlock insights from their documents.
+            </p>
+            {% if not current_user.is_authenticated %}
+                <div class="flex justify-center space-x-4">
+                    <a href="{{ url_for('routes.register') }}"
+                       class="bg-white text-purple-600 px-8 py-3 rounded-lg hover:bg-gray-100 transition-colors">
+                        Create Free Account
+                    </a>
+                    <a href="{{ url_for('routes.login') }}"
+                       class="border border-white text-white px-8 py-3 rounded-lg hover:bg-white/10 transition-colors">
+                        Sign In
+                    </a>
+                </div>
+            {% else %}
+                <a href="{{ url_for('routes.home') }}"
+                   class="bg-white text-purple-600 px-8 py-3 rounded-lg hover:bg-gray-100 transition-colors">
+                    Go to Dashboard
+                </a>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="border-t border-gray-800 py-8">
+        <div class="container mx-auto px-6">
+            <div class="flex justify-between items-center">
+                <div class="text-gray-400">
+                    © 2024 DocuOracle. All rights reserved.
+                </div>
+                <div class="flex space-x-6">
+                    <a href="#" class="text-gray-400 hover:text-white transition-colors">Privacy Policy</a>
+                    <a href="#" class="text-gray-400 hover:text-white transition-colors">Terms of Service</a>
+                    <a href="#" class="text-gray-400 hover:text-white transition-colors">Contact</a>
+                </div>
+            </div>
+        </div>
+    </footer>
+</div>
+{% endblock %}

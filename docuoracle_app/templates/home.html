@@ -11,13 +11,24 @@
                 <h1 class="text-2xl font-bold text-white">Welcome back!</h1>
                 <div class="flex items-center space-x-3 mt-1">
                     <span class="text-sm text-purple-400">{{ documents|length }} Documents</span>
-                    <span class="text-sm text-blue-400">Premium User</span>
                 </div>
                 <p class="text-gray-400 text-sm mt-2">Ask questions about your documents or analyze data with advanced visualization.</p>
             </div>
-            <div class="bg-gray-800/50 px-4 py-2 rounded-lg flex items-center space-x-2">
-                <div id="llamaStatusDot" class="w-2 h-2 rounded-full bg-green-500"></div>
-                <span class="text-sm text-gray-300">Llama Status: Connected</span>
+            <div class="flex items-center space-x-4">
+                <!-- Model Status -->
+                <div class="bg-gray-800/50 px-4 py-2 rounded-lg flex items-center space-x-2">
+                    <div id="modelStatusDot" class="w-2 h-2 rounded-full bg-red-500"></div>
+                    <span id="modelStatus" class="text-sm text-gray-300">Model Status: Not Connected</span>
+                </div>
+                <!-- Connect Button -->
+                <button id="connectModelBtn"
+                        class="bg-purple-600 hover:bg-purple-500 text-white px-4 py-2 rounded-lg transition-colors flex items-center space-x-2">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                    </svg>
+                    <span>Connect Model</span>
+                </button>
             </div>
         </div>
     </div>
@@ -30,22 +41,30 @@
             <div class="bg-gray-800/50 rounded-xl p-6">
                 <h2 class="text-lg font-medium text-white mb-4">Upload or Select Document</h2>
                 <div class="space-y-4">
-                    <!-- File Upload -->
-                    <div>
-                        <input type="file"
-                               id="fileInput"
-                               class="w-full p-4 rounded-lg bg-gray-900/50 border border-purple-500/20 text-gray-300
-                                      file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0
-                                      file:bg-purple-600 file:text-white file:font-medium
-                                      hover:file:bg-purple-500"
-                               accept=".pdf,.docx,.xlsx,.xls,.csv">
-                    </div>
+                    <!-- File Upload Form -->
+                    <form id="uploadForm" class="space-y-4">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <div class="flex items-center space-x-4">
+                            <input type="file"
+                                   id="fileInput"
+                                   name="file"
+                                   class="flex-1 p-4 rounded-lg bg-gray-900/50 border border-purple-500/20 text-gray-300
+                                          file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0
+                                          file:bg-purple-600 file:text-white file:font-medium
+                                          hover:file:bg-purple-500"
+                                   accept=".pdf,.docx,.xlsx,.xls,.csv">
+                            <button type="submit"
+                                    id="uploadButton"
+                                    class="hidden px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-500 transition-colors">
+                                Upload
+                            </button>
+                        </div>
+                    </form>
 
                     <!-- Document Selection -->
                     <div>
                         <label class="block text-sm text-gray-400 mb-2">or Select Existing Document</label>
                         <select id="document_select"
-                                onchange="handleDocumentSelect(this.value)"
                                 class="w-full bg-gray-900/50 border border-gray-700 rounded-lg px-4 py-2 text-white">
                             <option value="">Select a document...</option>
                             {% for doc in documents %}
@@ -56,11 +75,11 @@
 
                     <!-- Action Buttons -->
                     <div class="flex space-x-4">
-                        <button onclick="showVisualizationOptions()"
+                        <button id="showVisualizationBtn"
                                 class="flex-1 bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-500 transition-colors">
                             Data Visualization
                         </button>
-                        <button onclick="quickAnalysis()"
+                        <button id="quickAnalysisBtn"
                                 class="flex-1 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-500 transition-colors">
                             Quick Analysis
                         </button>
@@ -72,7 +91,6 @@
                             <div>
                                 <label class="block text-sm text-gray-400 mb-2">Chart Type</label>
                                 <select id="chartType"
-                                        onchange="handleChartTypeChange()"
                                         class="w-full bg-gray-900/50 border border-gray-700 rounded-lg px-4 py-2 text-white">
                                     <option value="line">Line Chart</option>
                                     <option value="bar">Bar Chart</option>
@@ -104,7 +122,7 @@
                             </div>
                         </div>
 
-                        <button onclick="generateVisualization()"
+                        <button id="generateVisualizationBtn"
                                 class="w-full bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-500 transition-colors">
                             Generate Visualization
                         </button>
@@ -117,13 +135,13 @@
                 <div class="flex justify-between items-center mb-4">
                     <h2 class="text-lg font-medium text-white">Visualization</h2>
                     <div class="flex space-x-2">
-                        <button onclick="downloadVisualization()" class="p-2 text-gray-400 hover:text-white">
+                        <button id="downloadVisualizationBtn" class="p-2 text-gray-400 hover:text-white">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                       d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
                             </svg>
                         </button>
-                        <button onclick="closeVisualization()" class="p-2 text-gray-400 hover:text-white">
+                        <button id="closeVisualizationBtn" class="p-2 text-gray-400 hover:text-white">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
                             </svg>
@@ -147,11 +165,13 @@
                 </div>
 
                 <!-- Question Input -->
-                <form id="questionForm" class="relative" onsubmit="handleQuestionSubmit(event)">
+                <form id="questionForm" class="relative">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <textarea id="question"
                              class="w-full bg-gray-900/50 border border-gray-700 rounded-lg px-4 py-2 pr-12 text-white resize-none"
                              placeholder="Type your question..."
-                             rows="2"></textarea>
+                             rows="2"
+                             disabled></textarea>
                     <button type="submit"
                             class="absolute right-2 bottom-2 p-2 bg-purple-600 text-white rounded-lg hover:bg-purple-500 transition-colors">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -171,11 +191,267 @@
         <span class="text-white text-lg" id="loadingMessage">Processing...</span>
     </div>
 </div>
+{% endblock %}
 
+{% block scripts %}
 <script>
 // Global variables
 let selectedDocument = null;
 let currentVisualization = null;
+
+// Initialize on page load
+document.addEventListener('DOMContentLoaded', function() {
+    console.log("DOM loaded, initializing components...");
+    initializeModelConnection();
+    setupEventListeners();
+    startModelStatusCheck();
+
+    // Enable question input if document is selected
+    const docSelect = document.getElementById('document_select');
+    const questionInput = document.getElementById('question');
+    const fileInput = document.getElementById('fileInput');
+    const uploadButton = document.getElementById('uploadButton');
+    const uploadForm = document.getElementById('uploadForm');
+
+    if (docSelect && questionInput) {
+        selectedDocument = docSelect.value;
+        questionInput.disabled = !selectedDocument;
+    }
+
+    // File input handling
+    fileInput.addEventListener('change', function() {
+        uploadButton.classList.toggle('hidden', !this.files.length);
+    });
+
+    // File upload handling
+    uploadForm.addEventListener('submit', async function(e) {
+    e.preventDefault();
+
+    const file = fileInput.files[0];
+    if (!file) {
+        showToast('Please select a file first', 'warning');
+        return;
+    }
+
+    try {
+        showLoading('Uploading document...');
+        uploadButton.disabled = true;
+        uploadButton.classList.add('opacity-50', 'cursor-not-allowed');
+
+        const response = await uploadFile('/api/upload_document', file, (progress) => {
+            // You can add progress handling here if needed
+            console.log(`Upload progress: ${progress}%`);
+        });
+
+        if (response.success) {
+            // Add new option to select dropdown
+            const docSelect = document.getElementById('document_select');
+            const option = new Option(response.document.filename, response.document.id);
+            docSelect.add(option);
+
+            // Select the newly uploaded document
+            docSelect.value = response.document.id;
+            selectedDocument = response.document.id;
+
+            // Enable question input
+            document.getElementById('question').disabled = false;
+
+            // Trigger document selection change event to load columns
+            handleDocumentSelect(response.document.id);
+
+            showToast('Document uploaded successfully', 'success');
+
+            // Reset form
+            fileInput.value = '';
+            uploadButton.classList.add('hidden');
+        } else {
+            throw new Error(response.error || 'Upload failed');
+        }
+    } catch (error) {
+        console.error('Upload error:', error);
+        showToast(error.message || 'Error uploading document', 'error');
+    } finally {
+        hideLoading();
+        uploadButton.disabled = false;
+        uploadButton.classList.remove('opacity-50', 'cursor-not-allowed');
+    }
+});
+
+    // Auto-resize textarea
+    if (questionInput) {
+        questionInput.addEventListener('input', function() {
+            this.style.height = 'auto';
+            this.style.height = (this.scrollHeight) + 'px';
+        });
+    }
+
+    // Load columns if document is selected
+    if (selectedDocument) {
+        loadDocumentColumns(selectedDocument);
+    }
+});
+
+// Setup event listeners
+function setupEventListeners() {
+    // Document selection
+    const documentSelect = document.getElementById('document_select');
+    documentSelect.addEventListener('change', (e) => handleDocumentSelect(e.target.value));
+
+    // Visualization options
+    document.getElementById('showVisualizationBtn').addEventListener('click', showVisualizationOptions);
+    document.getElementById('generateVisualizationBtn').addEventListener('click', generateVisualization);
+    document.getElementById('closeVisualizationBtn').addEventListener('click', closeVisualization);
+    document.getElementById('downloadVisualizationBtn').addEventListener('click', downloadVisualization);
+
+    // Question form
+    document.getElementById('questionForm').addEventListener('submit', handleQuestionSubmit);
+}
+
+// Model connection functions
+function initializeModelConnection() {
+    console.log("Initializing model connection...");
+
+    const modelStatus = document.getElementById('modelStatus');
+    const modelStatusDot = document.getElementById('modelStatusDot');
+    const connectButton = document.getElementById('connectModelBtn');
+
+    if (!connectButton) {
+        console.error("Connect button not found!");
+        return;
+    }
+
+    function updateUI(status, message, isError = false) {
+        console.log("Updating UI:", status, message);
+
+        if (status === 'connecting') {
+            modelStatus.textContent = 'Model Status: Connecting...';
+            modelStatusDot.className = 'w-2 h-2 rounded-full bg-yellow-500';
+            connectButton.disabled = true;
+            connectButton.textContent = 'Connecting...';
+            connectButton.classList.add('opacity-50', 'cursor-not-allowed');
+        } else if (status === 'connected') {
+            modelStatus.textContent = 'Model Status: Connected';
+            modelStatusDot.className = 'w-2 h-2 rounded-full bg-green-500';
+            connectButton.textContent = 'Connected';
+            connectButton.disabled = true;
+            connectButton.classList.remove('bg-purple-600', 'hover:bg-purple-500');
+            connectButton.classList.add('bg-green-600', 'opacity-50', 'cursor-not-allowed');
+        } else if (status === 'error') {
+            modelStatus.textContent = 'Model Status: Error';
+            modelStatusDot.className = 'w-2 h-2 rounded-full bg-red-500';
+            connectButton.disabled = false;
+            connectButton.textContent = 'Retry Connection';
+            connectButton.classList.remove('opacity-50', 'cursor-not-allowed');
+            if (message) {
+                showToast(message, 'error');
+            }
+        }
+    }
+
+    async function connectModel() {
+        console.log("Attempting to connect to model...");
+
+        try {
+            updateUI('connecting');
+
+            const response = await fetch('/api/initialize_model', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                credentials: 'same-origin'
+            });
+
+            console.log("Got response:", response.status);
+
+            const data = await response.json();
+            console.log("Response data:", data);
+
+            if (data.success) {
+                updateUI('connected');
+                showToast('Successfully connected to Mistral model', 'success');
+            } else {
+                throw new Error(data.error || 'Failed to connect to model');
+            }
+        } catch (error) {
+            console.error('Model connection error:', error);
+            updateUI('error', error.message);
+        }
+    }
+
+    // Add click event listener for the connect button
+    connectButton.addEventListener('click', (e) => {
+        console.log("Connect button clicked");
+        e.preventDefault();
+        connectModel();
+    });
+
+    // Check initial status
+    checkInitialStatus();
+}
+
+// Check initial model status
+async function checkInitialStatus() {
+    try {
+        const response = await fetch('/api/llama/status', {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            credentials: 'same-origin'
+        });
+        const data = await response.json();
+
+        if (data.initialized) {
+            const modelStatus = document.getElementById('modelStatus');
+            const modelStatusDot = document.getElementById('modelStatusDot');
+            const connectButton = document.getElementById('connectModelBtn');
+
+            modelStatus.textContent = 'Model Status: Connected';
+            modelStatusDot.className = 'w-2 h-2 rounded-full bg-green-500';
+            connectButton.textContent = 'Connected';
+            connectButton.disabled = true;
+            connectButton.classList.remove('bg-purple-600', 'hover:bg-purple-500');
+            connectButton.classList.add('bg-green-600', 'opacity-50', 'cursor-not-allowed');
+        }
+    } catch (error) {
+        console.error('Error checking initial status:', error);
+    }
+}
+
+// Periodic model status check
+function startModelStatusCheck() {
+    async function checkStatus() {
+        try {
+            const response = await fetch('/api/llama/status', {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            });
+            const data = await response.json();
+
+            const modelStatus = document.getElementById('modelStatus');
+            const modelStatusDot = document.getElementById('modelStatusDot');
+            const connectButton = document.getElementById('connectModelBtn');
+
+            if (data.initialized) {
+                modelStatus.textContent = 'Model Status: Connected';
+                modelStatusDot.className = 'w-2 h-2 rounded-full bg-green-500';
+                connectButton.textContent = 'Connected';
+                connectButton.disabled = true;
+                connectButton.classList.remove('bg-purple-600', 'hover:bg-purple-500');
+                connectButton.classList.add('bg-green-600', 'opacity-50', 'cursor-not-allowed');
+            }
+        } catch (error) {
+            console.error('Error checking model status:', error);
+        }
+    }
+
+    // Check immediately and then every 5 seconds
+    checkStatus();
+    setInterval(checkStatus, 5000);
+}
 
 // Document selection handler
 function handleDocumentSelect(docId) {
@@ -220,59 +496,112 @@ async function loadDocumentColumns(docId) {
     }
 }
 
-// Generate visualization
+// Update the generateVisualization function
 async function generateVisualization() {
-    if (!selectedDocument) {
-        showToast('Please select a document first', 'warning');
-        return;
-    }
-
-    const config = {
-        chartType: document.getElementById('chartType').value,
-        xColumn: document.getElementById('x_col').value,
-        yColumn: document.getElementById('y_col').value,
-        colorTheme: document.getElementById('colorTheme').value,
-    };
-
-    if (!config.xColumn || !config.yColumn) {
-        showToast('Please select both X and Y axis columns', 'warning');
-        return;
-    }
+    const visualizationArea = document.getElementById('visualizationArea');
+    const visualizationContent = document.getElementById('visualizationContent');
 
     try {
+        // Validate inputs first
+        const chartType = document.getElementById('chartType').value;
+        const xColumn = document.getElementById('x_col').value;
+        const yColumn = document.getElementById('y_col').value;
+
+        if (!xColumn || !yColumn) {
+            showToast('Please select both X and Y axis columns', 'warning');
+            return;
+        }
+
+        if (!selectedDocument) {
+            showToast('Please select a document first', 'warning');
+            return;
+        }
+
+        // Show loading state
         showLoading('Generating visualization...');
-        const response = await fetch('/generate_visualization', {
+        visualizationArea.classList.remove('hidden');
+        visualizationContent.innerHTML = '<div class="flex justify-center items-center h-64"><div class="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-500"></div></div>';
+
+        console.log('Sending visualization request:', {
+            document_id: selectedDocument,
+            config: {
+                chartType: chartType,
+                xColumn: xColumn,
+                yColumn: yColumn,
+                colorTheme: document.getElementById('colorTheme').value
+            }
+        });
+
+        const response = await fetch('/api/generate_visualization', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify({
                 document_id: selectedDocument,
-                config: config
+                config: {
+                    chartType: chartType,
+                    xColumn: xColumn,
+                    yColumn: yColumn,
+                    colorTheme: document.getElementById('colorTheme').value
+                }
             })
         });
 
+        console.log('Visualization response status:', response.status);
         const data = await response.json();
-        hideLoading();
+        console.log('Visualization data:', data);
 
-        if (data.success) {
-            const visualizationArea = document.getElementById('visualizationArea');
-            const visualizationContent = document.getElementById('visualizationContent');
+        if (data.success && data.visualization) {
+            // Log the visualization HTML for debugging
+            console.log('Visualization HTML:', data.visualization);
 
-            visualizationContent.innerHTML = data.visualization;
+            // Ensure visualization area is fully visible
+            visualizationArea.style.display = 'block';
             visualizationArea.classList.remove('hidden');
-            currentVisualization = data.visualization;
+
+            // Clear and update content
+            visualizationContent.innerHTML = data.visualization;
+
+            // Add plotly responsive behavior
+            if (window.Plotly) {
+                const plots = visualizationContent.getElementsByClassName('plotly-graph-div');
+                Array.from(plots).forEach(plot => {
+                    window.Plotly.Plots.resize(plot);
+                });
+            }
+
             showToast('Visualization generated successfully', 'success');
         } else {
             throw new Error(data.error || 'Failed to generate visualization');
         }
     } catch (error) {
-        hideLoading();
+        console.error('Visualization error:', error);
+        visualizationContent.innerHTML = `
+            <div class="flex flex-col items-center justify-center h-64 text-center">
+                <div class="text-red-500 mb-2">Error generating visualization:</div>
+                <div class="text-gray-400">${error.message}</div>
+            </div>`;
         showToast('Error generating visualization: ' + error.message, 'error');
+    } finally {
+        hideLoading();
     }
 }
 
-// Handle question submission
+// Add this function to check if visualization is visible
+function ensureVisualizationVisible() {
+    const visualizationArea = document.getElementById('visualizationArea');
+    const visualizationContent = document.getElementById('visualizationContent');
+
+    if (visualizationArea && visualizationContent) {
+        visualizationArea.style.display = 'block';
+        visualizationArea.classList.remove('hidden');
+        console.log('Visualization area display:', getComputedStyle(visualizationArea).display);
+        console.log('Visualization content:', visualizationContent.innerHTML);
+    }
+}
+
+// Update the handleQuestionSubmit function
 async function handleQuestionSubmit(event) {
     event.preventDefault();
 
@@ -293,6 +622,11 @@ async function handleQuestionSubmit(event) {
         // Clear input
         document.getElementById('question').value = '';
 
+        console.log('Sending request with:', {
+            document_id: selectedDocument,
+            question: question
+        });
+
         const response = await fetch('/process_document', {
             method: 'POST',
             headers: {
@@ -304,8 +638,9 @@ async function handleQuestionSubmit(event) {
             })
         });
 
+        console.log('Response status:', response.status);
         const data = await response.json();
-        hideLoading();
+        console.log('Response data:', data);
 
         if (data.success) {
             addChatMessage('Assistant', data.answer);
@@ -313,8 +648,11 @@ async function handleQuestionSubmit(event) {
             throw new Error(data.error || 'Failed to process question');
         }
     } catch (error) {
-        hideLoading();
+        console.error('Question processing error:', error);
+        addChatMessage('Assistant', 'Error: ' + error.message);
         showToast('Error processing question: ' + error.message, 'error');
+    } finally {
+        hideLoading();
     }
 }
 
@@ -400,34 +738,83 @@ function showToast(message, type = 'info') {
         setTimeout(() => toast.remove(), 300);
     }, 3000);
 }
-
-// Initialize on page load
-document.addEventListener('DOMContentLoaded', function() {
-    // Enable question input if document is selected
-    const docSelect = document.getElementById('document_select');
-    const questionInput = document.getElementById('question');
-
-    if (docSelect && questionInput) {
-        selectedDocument = docSelect.value;
-        questionInput.disabled = !selectedDocument;
-    }
-
-    // Auto-resize textarea
-    if (questionInput) {
-        questionInput.addEventListener('input', function() {
-            this.style.height = 'auto';
-            this.style.height = (this.scrollHeight) + 'px';
-        });
-    }
-
-    // Load columns if document is selected
-    if (selectedDocument) {
-        loadDocumentColumns(selectedDocument);
-    }
-});
 </script>
 
 <style>
+/* Custom scrollbar for chat */
+
+#visualizationArea {
+    min-height: 400px;
+    width: 100%;
+    background-color: rgba(17, 24, 39, 0.5);
+    border-radius: 0.75rem;
+}
+
+#visualizationContent {
+    min-height: 400px;
+    width: 100%;
+    background-color: rgba(17, 24, 39, 0.3);
+    border-radius: 0.5rem;
+    overflow: hidden;
+}
+
+/* Ensure Plotly charts are responsive */
+.plotly-graph-div {
+    width: 100% !important;
+    height: 100% !important;
+}
+.custom-scrollbar::-webkit-scrollbar {
+    width: 4px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 2px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.3);
+}
+
+/* Smooth transitions */
+.transition-all {
+    transition-property: all;
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+    transition-duration: 150ms;
+}
+
+/* Loading animation */
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+.animate-spin {
+    animation: spin 1s linear infinite;
+}
+
+/* Toast animations */
+@keyframes slideIn {
+    from { transform: translateX(100%); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+}
+
+@keyframes slideOut {
+    from { transform: translateX(0); opacity: 1; }
+    to { transform: translateX(100%); opacity: 0; }
+}
+
+.slide-in {
+    animation: slideIn 0.3s ease-out;
+}
+
+.slide-out {
+    animation: slideOut 0.3s ease-in forwards;
+}
+
 /* Custom scrollbar for chat */
 .custom-scrollbar::-webkit-scrollbar {
     width: 4px;

@@ -14,8 +14,11 @@
                 <p class="mt-2 text-gray-400">Sign in to your account</p>
             </div>
 
-            <!-- Login Form -->
+           <!-- Login Form -->
             <form method="POST" class="space-y-6">
+                <!-- Add CSRF Token -->
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
                 <!-- Username/Email Field -->
                 <div class="space-y-2">
                     <label class="block text-sm font-medium text-gray-300">
